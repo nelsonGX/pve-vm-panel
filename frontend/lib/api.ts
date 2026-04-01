@@ -29,6 +29,7 @@ export async function apiFetch(
     throw new Error(err.detail || 'API error')
   }
 
+  if (res.status === 204) return null
   return res.json()
 }
 
@@ -54,5 +55,6 @@ export async function clientApiFetch(
     throw new Error(err.detail || 'API error')
   }
 
+  if (res.status === 204) return null
   return res.json()
 }

@@ -10,7 +10,7 @@ export interface ProvisioningStep {
 }
 
 export interface VMCredentials {
-  ip: string
+  ip_address: string
   username: string
   password: string
   expires_at: string
@@ -139,8 +139,8 @@ export default function ProvisioningModal({
             <div className="flex flex-col gap-2 font-mono text-sm">
               <div className="flex items-center">
                 <span className="w-24 text-gray-500">IP</span>
-                <span className="text-gray-200">{credentials.ip}</span>
-                <CopyButton text={credentials.ip} />
+                <span className="text-gray-200">{credentials.ip_address}</span>
+                <CopyButton text={credentials.ip_address} />
               </div>
               <div className="flex items-center">
                 <span className="w-24 text-gray-500">Username</span>

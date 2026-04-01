@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -65,20 +67,27 @@ async def remove_vm(
 # ---------------------------------------------------------------------------
 
 
+def _ensure_utc(dt: datetime) -> datetime:
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
 def _vm_to_response(doc: dict) -> dict:
     return {
-        "vm_id": str(doc["_id"]),
+        "id": str(doc["_id"]),
         "vmid": doc["vmid"],
         "user_id": doc["user_id"],
+        "name": doc.get("name", ""),
         "os": doc["os"],
         "cpu_cores": doc["cpu_cores"],
         "ram_gb": doc["ram_gb"],
         "disk_gb": doc["disk_gb"],
-        "gpu_id": doc.get("gpu_id"),
-        "ip_address": doc.get("ip_address"),
+        "has_gpu": doc.get("gpu_id") is not None,
+        "ip": doc.get("ip_address"),
         "username": doc.get("username"),
         "status": doc["status"],
-        "created_at": doc["created_at"],
-        "expires_at": doc["expires_at"],
+        "created_at": _ensure_utc(doc["created_at"]),
+        "expires_at": _ensure_utc(doc["expires_at"]),
         "points_charged": doc.get("points_charged", 0),
     }

@@ -248,7 +248,7 @@ export default function CreatePage() {
       }
 
       setCredentials({
-        ip: data.ip,
+        ip_address: data.ip_address,
         username: data.username,
         password: data.password,
         expires_at: data.expires_at,

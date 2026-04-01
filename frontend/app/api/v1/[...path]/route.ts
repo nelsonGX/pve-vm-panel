@@ -38,7 +38,7 @@ async function proxy(req: NextRequest): Promise<NextResponse> {
   })
 
   const data = await upstream.text()
-  return new NextResponse(data, {
+  return new NextResponse(data || null, {
     status: upstream.status,
     headers: { 'Content-Type': upstream.headers.get('Content-Type') ?? 'application/json' },
   })
