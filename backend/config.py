@@ -91,10 +91,12 @@ class Settings(BaseSettings):
     @field_validator("ADMIN_DISCORD_IDS", mode="before")
     @classmethod
     def parse_admin_ids(cls, v: Any) -> list[str]:
+        if isinstance(v, (int, float)):
+            return [str(int(v))]
         if isinstance(v, str):
             return [item.strip() for item in v.split(",") if item.strip()]
         if isinstance(v, list):
-            return v
+            return [str(item) for item in v]
         raise ValueError("ADMIN_DISCORD_IDS must be a comma-separated string or list")
 
     # ------------------------------------------------------------------ #
