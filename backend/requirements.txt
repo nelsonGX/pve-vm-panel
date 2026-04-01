@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+motor
+pydantic-settings
+httpx
+apscheduler
+bcrypt
+python-multipart
