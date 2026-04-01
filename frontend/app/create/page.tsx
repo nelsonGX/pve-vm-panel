@@ -92,8 +92,8 @@ export default function CreatePage() {
 
   // Form state
   const [selectedOs, setSelectedOs] = useState<string>('')
-  const [cpuCores, setCpuCores] = useState(2)
-  const [ramGb, setRamGb] = useState(4)
+  const [cpuCores, setCpuCores] = useState(16)
+  const [ramGb, setRamGb] = useState(32)
   const [diskGb, setDiskGb] = useState(50)
   const [hasGpu, setHasGpu] = useState(false)
   const [selectedGpu, setSelectedGpu] = useState<string>('')

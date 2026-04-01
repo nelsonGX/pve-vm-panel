@@ -119,11 +119,4 @@ class Settings(BaseSettings):
             return None
         return vmid
 
-    def get_default_username(self, os: str) -> str:
-        os_lower = os.lower()
-        if os_lower.startswith("ubuntu"):
-            return "ubuntu"
-        return "root"
-
-
 settings = Settings()  # type: ignore[call-arg]

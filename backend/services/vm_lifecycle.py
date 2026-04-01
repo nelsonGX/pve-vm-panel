@@ -202,7 +202,7 @@ async def create_vm(
     now = datetime.now(timezone.utc)
     expires_at = now + timedelta(hours=request.duration_hours)
     password = _generate_password()
-    username = settings.get_default_username(request.os)
+    username = "root"
     vm_name = f"vm-{discord_id[:8]}-{vmid}"
     prefix_len = ipaddress.ip_network(settings.VM_IP_RANGE, strict=False).prefixlen
 

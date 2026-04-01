@@ -162,6 +162,9 @@ export default function ProvisioningModal({
                   {new Date(credentials.expires_at).toLocaleString()}
                 </span>
               </div>
+              <div className="mt-3 rounded-md bg-yellow-900/30 p-3 text-sm text-yellow-300">
+                Note: You won{"'"}t be able to see these credentials again, so make sure to copy them somewhere safe!
+              </div>
             </div>
           </div>
         )}
