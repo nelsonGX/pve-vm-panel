@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import asyncio
+import json
 from datetime import datetime, timezone
 
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from auth import get_current_user
@@ -36,6 +39,59 @@ async def provision_vm(
         return await create_vm(body, current_user, db)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/vms/stream")
+async def provision_vm_stream(
+    body: VMCreateRequest,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    """Stream VM provisioning progress as Server-Sent Events (text/event-stream).
+
+    Events:
+      data: {"type": "step", "step": "<name>", "status": "loading"|"done"}
+      data: {"type": "complete", "data": {credentials}}
+      data: {"type": "error", "message": "<msg>"}
+    """
+    queue: asyncio.Queue = asyncio.Queue()
+
+    async def _run() -> None:
+        try:
+            result = await create_vm(body, current_user, db, progress=queue)
+            await queue.put({
+                "type": "complete",
+                "data": {
+                    "vm_id": result.vm_id,
+                    "vmid": result.vmid,
+                    "ip_address": result.ip_address,
+                    "username": result.username,
+                    "password": result.password,
+                    "expires_at": result.expires_at.isoformat(),
+                    "points_charged": result.points_charged,
+                },
+            })
+        except ValueError as exc:
+            await queue.put({"type": "error", "message": str(exc)})
+        except Exception as exc:
+            await queue.put({"type": "error", "message": f"Unexpected error: {exc}"})
+        finally:
+            await queue.put(None)  # sentinel — signals end of stream
+
+    asyncio.create_task(_run())
+
+    async def _stream():
+        while True:
+            item = await queue.get()
+            if item is None:
+                break
+            yield f"data: {json.dumps(item)}\n\n"
+
+    return StreamingResponse(
+        _stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @router.delete("/vms/{vm_id}", status_code=204)

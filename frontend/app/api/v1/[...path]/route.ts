@@ -37,6 +37,19 @@ async function proxy(req: NextRequest): Promise<NextResponse> {
     body,
   })
 
+  // Pass SSE streams through without buffering
+  if (upstream.headers.get('Content-Type')?.includes('text/event-stream')) {
+    return new NextResponse(upstream.body, {
+      status: upstream.status,
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      },
+    })
+  }
+
   const data = await upstream.text()
   return new NextResponse(data || null, {
     status: upstream.status,

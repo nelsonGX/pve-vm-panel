@@ -19,6 +19,18 @@ from services.pve import PVEError, pve_client
 
 logger = logging.getLogger(__name__)
 
+
+# ---------------------------------------------------------------------------
+# Streaming progress helper
+# ---------------------------------------------------------------------------
+
+
+async def _emit(queue: asyncio.Queue | None, step: str, status: str) -> None:
+    """Push a progress event to the SSE queue. No-op when queue is None."""
+    if queue is not None:
+        await queue.put({"type": "step", "step": step, "status": status})
+
+
 # ---------------------------------------------------------------------------
 # Cost calculation
 # ---------------------------------------------------------------------------
@@ -112,8 +124,9 @@ async def create_vm(
     request: VMCreateRequest,
     current_user: dict,
     db: AsyncIOMotorDatabase,
+    progress: asyncio.Queue | None = None,
 ) -> VMCreateResponse:
-    """Full 9-step VM creation flow."""
+    """Full 9-step VM creation flow. Pass an asyncio.Queue to receive SSE progress events."""
 
     discord_id = current_user["discord_id"]
 
@@ -177,6 +190,7 @@ async def create_vm(
     # ------------------------------------------------------------------
     # Step 1: Reserve — deduct points atomically, insert VM document
     # ------------------------------------------------------------------
+    await _emit(progress, "reserve", "loading")
     updated_user = await db.users.find_one_and_update(
         {"discord_id": discord_id, "points": {"$gte": cost}},
         {"$inc": {"points": -cost}},
@@ -211,6 +225,7 @@ async def create_vm(
     }
     insert_result = await db.vms.insert_one(vm_doc)
     vm_id = str(insert_result.inserted_id)
+    await _emit(progress, "reserve", "done")
 
     # ------------------------------------------------------------------
     # Steps 2–8: Provision VM in Proxmox (with full cleanup on failure)
@@ -218,6 +233,7 @@ async def create_vm(
     pve_vm_created = False
     try:
         # Step 2: Clone template
+        await _emit(progress, "clone", "loading")
         clone_upid = await pve_client.clone_vm(
             template_vmid=template_vmid,
             newid=vmid,
@@ -227,8 +243,10 @@ async def create_vm(
         )
         await pve_client.poll_task(clone_upid, timeout_seconds=300)
         pve_vm_created = True
+        await _emit(progress, "clone", "done")
 
         # Step 3: Move disk to target storage (skip if already there)
+        await _emit(progress, "storage", "loading")
         vm_cfg = await pve_client.get_vm_config(vmid)
         sata0_val = vm_cfg.get("sata0", "")
         disk_storage = sata0_val.split(":")[0] if ":" in sata0_val else ""
@@ -246,8 +264,10 @@ async def create_vm(
 
         # Step 5: Resize disk
         await pve_client.resize_disk(vmid, "sata0", f"{request.disk_gb}G")
+        await _emit(progress, "storage", "done")
 
         # Step 6: Attach GPU if requested
+        await _emit(progress, "configure", "loading")
         if gpu_pci_id:
             await pve_client.update_vm_config(
                 vmid,
@@ -262,10 +282,13 @@ async def create_vm(
             nameserver=settings.VM_DNS,
             ciupgrade=0,
         )
+        await _emit(progress, "configure", "done")
 
         # Step 8: Start VM and poll until running
+        await _emit(progress, "start", "loading")
         await pve_client.start_vm(vmid)
         await _poll_vm_running(vmid, timeout_seconds=180)
+        await _emit(progress, "start", "done")
 
     except Exception as exc:
         logger.error("VM creation failed for vmid=%s: %s", vmid, exc)

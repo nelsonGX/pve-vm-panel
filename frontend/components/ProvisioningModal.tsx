@@ -5,6 +5,7 @@ import { useState } from 'react'
 export type StepStatus = 'pending' | 'loading' | 'done' | 'error'
 
 export interface ProvisioningStep {
+  key?: string
   label: string
   status: StepStatus
 }

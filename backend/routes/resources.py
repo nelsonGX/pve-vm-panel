@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -65,3 +67,52 @@ async def get_resources(db: AsyncIOMotorDatabase = Depends(get_db)):
         },
         "gpus": gpu_statuses,
     }
+
+
+@router.get("/resources/timeline")
+async def get_resources_timeline(db: AsyncIOMotorDatabase = Depends(get_db)):
+    """Return active VMs with user info for timeline visualization."""
+    vms = await db.vms.find(
+        {"status": {"$in": ["provisioning", "running"]}},
+    ).to_list(length=200)
+
+    if not vms:
+        return {"vms": [], "now": datetime.now(timezone.utc).isoformat()}
+
+    user_ids = list({v["user_id"] for v in vms})
+    users: dict[str, dict] = {}
+    async for u in db.users.find(
+        {"discord_id": {"$in": user_ids}},
+        {"discord_id": 1, "discord_username": 1, "discord_avatar": 1},
+    ):
+        users[u["discord_id"]] = u
+
+    def _to_iso(dt: datetime | None) -> str | None:
+        if dt is None:
+            return None
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.isoformat()
+
+    result = []
+    for vm in vms:
+        user = users.get(vm["user_id"], {})
+        started = vm.get("started_at") or vm.get("created_at")
+        result.append({
+            "id": str(vm["_id"]),
+            "user": {
+                "discord_id": vm["user_id"],
+                "username": user.get("discord_username") or vm["user_id"],
+                "avatar": user.get("discord_avatar"),
+            },
+            "os": vm["os"],
+            "cpu_cores": vm["cpu_cores"],
+            "ram_gb": vm["ram_gb"],
+            "disk_gb": vm["disk_gb"],
+            "has_gpu": vm.get("gpu_id") is not None,
+            "started_at": _to_iso(started),
+            "expires_at": _to_iso(vm["expires_at"]),
+            "status": vm["status"],
+        })
+
+    return {"vms": result, "now": datetime.now(timezone.utc).isoformat()}

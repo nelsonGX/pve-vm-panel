@@ -12,11 +12,15 @@ export default function PointsBadge() {
   useEffect(() => {
     if (status !== 'authenticated') return
 
-    setLoading(true)
     clientApiFetch('/me')
-      .then((data: { points: number }) => setPoints(data.points))
-      .catch(() => setPoints(null))
-      .finally(() => setLoading(false))
+      .then((data: { points: number }) => {
+        setPoints(data.points)
+        setLoading(false)
+      })
+      .catch(() => {
+        setPoints(null)
+        setLoading(false)
+      })
   }, [status, session])
 
   if (status !== 'authenticated') return null

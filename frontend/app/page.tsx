@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { auth } from '@/auth'
 import { apiFetch } from '@/lib/api'
 import ResourceBar from '@/components/ResourceBar'
+import ResourceTimeline from '@/components/ResourceTimeline'
 
 interface ResourcesData {
   cpu: { available: number; total: number }
@@ -91,9 +92,14 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* Resource timeline */}
+      <section className="animate-fade-in stagger-2 mb-8">
+        <ResourceTimeline />
+      </section>
+
       {/* Auth section */}
       {session ? (
-        <section className="animate-fade-in stagger-2">
+        <section className="animate-fade-in stagger-3">
           <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-500">
             Your Account
           </h2>
@@ -136,7 +142,7 @@ export default async function HomePage() {
           </div>
         </section>
       ) : (
-        <section className="animate-fade-in stagger-2 rounded-xl border border-zinc-800 bg-zinc-900/80 p-10 text-center shadow-sm">
+        <section className="animate-fade-in stagger-3 rounded-xl border border-zinc-800 bg-zinc-900/80 p-10 text-center shadow-sm">
           <p className="mb-5 text-zinc-400">
             Sign in with Discord to start spinning up VMs.
           </p>

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { clientApiFetch } from '@/lib/api'
 import ProvisioningModal, {
   type ProvisioningStep,
+  type StepStatus,
   type VMCredentials,
 } from '@/components/ProvisioningModal'
 
@@ -58,6 +59,8 @@ const DURATION_OPTIONS = [
   { label: '8h', hours: 8 },
   { label: '12h', hours: 12 },
   { label: '24h', hours: 24 },
+  { label: '36h', hours: 36 },
+  { label: '48h', hours: 48 },
 ]
 
 // ---------------------------------------------------------------------------
@@ -198,68 +201,93 @@ export default function CreatePage() {
   // ---------------------------------------------------------------------------
   async function handleCreate() {
     const initialSteps: ProvisioningStep[] = [
-      { label: 'Reserving resources', status: 'loading' },
-      { label: 'Creating VM disk', status: 'pending' },
-      { label: 'Configuring network', status: 'pending' },
-      { label: 'Starting VM', status: 'pending' },
-      { label: 'Waiting for cloud-init', status: 'pending' },
+      { key: 'reserve',   label: 'Reserving resources',  status: 'pending' },
+      { key: 'clone',     label: 'Cloning template',     status: 'pending' },
+      { key: 'storage',   label: 'Configuring storage',  status: 'pending' },
+      { key: 'configure', label: 'Configuring VM',       status: 'pending' },
+      { key: 'start',     label: 'Starting VM',          status: 'pending' },
     ]
     setSteps(initialSteps)
     setCredentials(null)
     setProvError(null)
     setModalOpen(true)
 
+    const payload = {
+      os: selectedOs,
+      cpu_cores: cpuCores,
+      ram_gb: ramGb,
+      disk_gb: diskGb,
+      gpu_id: hasGpu ? selectedGpu : undefined,
+      duration_hours: durationHours,
+    }
+
     try {
-      // Step 1 done, step 2 loading
-      await new Promise((r) => setTimeout(r, 600))
-      setSteps((prev) =>
-        prev.map((s, i) =>
-          i === 0 ? { ...s, status: 'done' } : i === 1 ? { ...s, status: 'loading' } : s,
-        ),
-      )
-
-      const payload = {
-        os: selectedOs,
-        cpu_cores: cpuCores,
-        ram_gb: ramGb,
-        disk_gb: diskGb,
-        has_gpu: hasGpu,
-        gpu_id: hasGpu ? selectedGpu : undefined,
-        duration_hours: durationHours,
-      }
-
-      const data = await clientApiFetch('/vms', {
+      const response = await fetch('/api/v1/vms/stream', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
 
-      // Simulate steps completing
-      for (let i = 1; i < initialSteps.length; i++) {
-        await new Promise((r) => setTimeout(r, 700))
-        setSteps((prev) =>
-          prev.map((s, idx) =>
-            idx === i
-              ? { ...s, status: 'done' }
-              : idx === i + 1
-              ? { ...s, status: 'loading' }
-              : s,
-          ),
-        )
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ detail: response.statusText }))
+        throw new Error(err.detail || 'Request failed')
       }
 
-      setCredentials({
-        ip_address: data.ip_address,
-        username: data.username,
-        password: data.password,
-        expires_at: data.expires_at,
-      })
+      if (!response.body) throw new Error('No response body')
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      outer: while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+
+        const lines = buffer.split('\n')
+        buffer = lines.pop() ?? ''
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          let event: Record<string, unknown>
+          try {
+            event = JSON.parse(line.slice(6))
+          } catch {
+            continue
+          }
+
+          if (event.type === 'step') {
+            setSteps((prev) =>
+              prev.map((s) =>
+                s.key === event.step ? { ...s, status: event.status as StepStatus } : s,
+              ),
+            )
+          } else if (event.type === 'complete') {
+            setSteps((prev) =>
+              prev.map((s) =>
+                s.status === 'loading' || s.status === 'pending'
+                  ? { ...s, status: 'done' }
+                  : s,
+              ),
+            )
+            const d = event.data as Record<string, string>
+            setCredentials({
+              ip_address: d.ip_address,
+              username: d.username,
+              password: d.password,
+              expires_at: d.expires_at,
+            })
+            break outer
+          } else if (event.type === 'error') {
+            throw new Error(event.message as string)
+          }
+        }
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Provisioning failed'
       setProvError(msg)
       setSteps((prev) =>
-        prev.map((s) =>
-          s.status === 'loading' ? { ...s, status: 'error' } : s,
-        ),
+        prev.map((s) => (s.status === 'loading' ? { ...s, status: 'error' } : s)),
       )
     }
   }

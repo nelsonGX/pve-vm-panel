@@ -5,6 +5,10 @@ html {
   color: rgb(244 244 245); /* zinc-100 */
 }
 
+button {
+  cursor: pointer;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
