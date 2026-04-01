@@ -22,7 +22,6 @@ async function proxy(req: NextRequest): Promise<NextResponse> {
   }
 
   const discordId = token?.discordId as string | undefined
-  console.log('[proxy] token:', JSON.stringify(token), 'discordId:', discordId)
   if (discordId) {
     headers['X-Discord-Id'] = discordId
   }

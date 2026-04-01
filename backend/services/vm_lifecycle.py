@@ -51,7 +51,6 @@ async def get_available_ip(db: AsyncIOMotorDatabase) -> str | None:
     network = ipaddress.ip_network(settings.VM_IP_RANGE, strict=False)
     gateway = ipaddress.ip_address(settings.VM_GATEWAY)
 
-    # Collect IPs in use
     used_cursor = db.vms.find(
         {"status": {"$in": ["provisioning", "running"]}, "ip_address": {"$exists": True}},
         {"ip_address": 1},
@@ -116,18 +115,17 @@ async def create_vm(
 ) -> VMCreateResponse:
     """Full 9-step VM creation flow."""
 
-    user_id = current_user["_id"] if "_id" in current_user else current_user.get("id")
     discord_id = current_user["discord_id"]
 
     # ------------------------------------------------------------------
-    # Step 1: Validate OS and get template VMID
+    # Pre-flight: validate OS and get template VMID
     # ------------------------------------------------------------------
     template_vmid = settings.get_template_vmid(request.os)
     if template_vmid is None or template_vmid == 0:
         raise ValueError(f"OS '{request.os}' is not supported or template not configured")
 
     # ------------------------------------------------------------------
-    # Step 2: Pre-flight resource checks
+    # Pre-flight: resource limit checks
     # ------------------------------------------------------------------
     if request.cpu_cores > settings.RESOURCE_LIMIT_CPU:
         raise ValueError(
@@ -143,73 +141,56 @@ async def create_vm(
         )
 
     # ------------------------------------------------------------------
-    # Step 3: Calculate cost and deduct points atomically
+    # Pre-flight: GPU validation (no side effects)
     # ------------------------------------------------------------------
     has_gpu = request.gpu_id is not None
-    cost = calculate_cost(
-        request.cpu_cores, request.ram_gb, request.disk_gb, has_gpu, request.duration_hours
-    )
-
-    user_filter = {"discord_id": discord_id, "points": {"$gte": cost}}
-    updated_user = await db.users.find_one_and_update(
-        user_filter,
-        {"$inc": {"points": -cost}},
-        return_document=ReturnDocument.AFTER,
-    )
-    if updated_user is None:
-        raise ValueError("Insufficient points to create VM")
-
-    # ------------------------------------------------------------------
-    # Step 4: GPU reservation (atomic)
-    # ------------------------------------------------------------------
     gpu_pci_id: str | None = None
     if request.gpu_id:
         gpu_cfg = next(
             (g for g in settings.RESOURCE_GPU_POOL if g["id"] == request.gpu_id), None
         )
         if gpu_cfg is None:
-            await _refund_points(discord_id, cost, db)
             raise ValueError(f"GPU '{request.gpu_id}' not in pool")
-
         gpu_pci_id = gpu_cfg["pci_id"]
-
-        # Check no active VM already holds this GPU
         gpu_in_use = await db.vms.find_one(
-            {
-                "gpu_id": request.gpu_id,
-                "status": {"$in": ["provisioning", "running"]},
-            }
+            {"gpu_id": request.gpu_id, "status": {"$in": ["provisioning", "running"]}}
         )
         if gpu_in_use:
-            await _refund_points(discord_id, cost, db)
             raise ValueError(f"GPU '{request.gpu_id}' is currently in use")
 
     # ------------------------------------------------------------------
-    # Step 5: IP allocation
+    # Pre-flight: IP allocation and VMID selection
     # ------------------------------------------------------------------
     ip_address = await get_available_ip(db)
     if ip_address is None:
-        await _refund_points(discord_id, cost, db)
         raise ValueError("No available IP addresses in the pool")
 
-    # ------------------------------------------------------------------
-    # Step 6: Select free VMID from Proxmox
-    # ------------------------------------------------------------------
+    cost = calculate_cost(
+        request.cpu_cores, request.ram_gb, request.disk_gb, has_gpu, request.duration_hours
+    )
+
     try:
         vmid = await pve_client.select_free_vmid()
     except PVEError as exc:
-        await _refund_points(discord_id, cost, db)
         raise ValueError(str(exc)) from exc
 
     # ------------------------------------------------------------------
-    # Step 7: Insert VM document in DB (status=provisioning)
+    # Step 1: Reserve — deduct points atomically, insert VM document
     # ------------------------------------------------------------------
+    updated_user = await db.users.find_one_and_update(
+        {"discord_id": discord_id, "points": {"$gte": cost}},
+        {"$inc": {"points": -cost}},
+        return_document=ReturnDocument.AFTER,
+    )
+    if updated_user is None:
+        raise ValueError("Insufficient points to create VM")
+
     now = datetime.now(timezone.utc)
     expires_at = now + timedelta(hours=request.duration_hours)
     password = _generate_password()
-    password_hash = _hash_password(password)
     username = settings.get_default_username(request.os)
     vm_name = f"vm-{discord_id[:8]}-{vmid}"
+    prefix_len = ipaddress.ip_network(settings.VM_IP_RANGE, strict=False).prefixlen
 
     vm_doc = {
         "vmid": vmid,
@@ -222,7 +203,6 @@ async def create_vm(
         "gpu_pci_id": gpu_pci_id,
         "ip_address": ip_address,
         "username": username,
-        "password_hash": password_hash,
         "status": "provisioning",
         "created_at": now,
         "expires_at": expires_at,
@@ -233,54 +213,62 @@ async def create_vm(
     vm_id = str(insert_result.inserted_id)
 
     # ------------------------------------------------------------------
-    # Step 8: Provision VM in Proxmox
+    # Steps 2–8: Provision VM in Proxmox (with full cleanup on failure)
     # ------------------------------------------------------------------
     pve_vm_created = False
     try:
-        # 8a. Clone template
-        upid = await pve_client.clone_vm(
+        # Step 2: Clone template
+        clone_upid = await pve_client.clone_vm(
             template_vmid=template_vmid,
             newid=vmid,
             name=vm_name,
             storage=settings.VM_STORAGE,
             target=settings.PVE_NODE,
         )
-        await pve_client.poll_task(upid, timeout_seconds=300)
+        await pve_client.poll_task(clone_upid, timeout_seconds=300)
         pve_vm_created = True
 
-        # 8b. Configure CPU / RAM / network
-        cidr = ipaddress.ip_network(settings.VM_IP_RANGE, strict=False).prefixlen
-        config: dict = {
-            "cores": request.cpu_cores,
-            "memory": request.ram_gb * 1024,
-            "net0": f"virtio,bridge={settings.VM_BRIDGE}",
-            "ipconfig0": f"ip={ip_address}/{cidr},gw={settings.VM_GATEWAY}",
-            "nameserver": settings.VM_DNS,
-            "ciuser": username,
-            "cipassword": password,
-            "sshkeys": "",
-        }
-        if gpu_pci_id:
-            config["hostpci0"] = f"{gpu_pci_id},pcie=1"
+        # Step 3: Move disk to target storage (skip if already there)
+        vm_cfg = await pve_client.get_vm_config(vmid)
+        sata0_val = vm_cfg.get("sata0", "")
+        disk_storage = sata0_val.split(":")[0] if ":" in sata0_val else ""
+        if disk_storage != settings.VM_STORAGE:
+            move_upid = await pve_client.move_disk(vmid, "sata0", settings.VM_STORAGE)
+            await pve_client.poll_task(move_upid, timeout_seconds=600)
 
-        await pve_client.update_vm_config(vmid, **config)
-
-        # 8c. Resize disk
-        current_cfg = await pve_client.get_vm_config(vmid)
-        disk_key = "scsi0" if "scsi0" in current_cfg else "virtio0"
-        resize_upid = await pve_client.resize_disk(
-            vmid, disk_key, f"{request.disk_gb}G"
+        # Step 4: Set CPU and RAM
+        await pve_client.update_vm_config(
+            vmid,
+            cpu="host",
+            cores=request.cpu_cores,
+            memory=request.ram_gb * 1024,
         )
-        if resize_upid:
-            await pve_client.poll_task(resize_upid, timeout_seconds=120)
 
-        # 8d. Start VM
-        start_upid = await pve_client.start_vm(vmid)
-        await pve_client.poll_task(start_upid, timeout_seconds=120)
+        # Step 5: Resize disk
+        await pve_client.resize_disk(vmid, "sata0", f"{request.disk_gb}G")
+
+        # Step 6: Attach GPU if requested
+        if gpu_pci_id:
+            await pve_client.update_vm_config(
+                vmid,
+                hostpci0=f"{gpu_pci_id},pcie=1,x-vga=1",
+            )
+
+        # Step 7: Configure cloud-init
+        await pve_client.update_vm_config(
+            vmid,
+            cipassword=password,
+            ipconfig0=f"ip={ip_address}/{prefix_len},gw={settings.VM_GATEWAY}",
+            nameserver=settings.VM_DNS,
+            ciupgrade=0,
+        )
+
+        # Step 8: Start VM and poll until running
+        await pve_client.start_vm(vmid)
+        await _poll_vm_running(vmid, timeout_seconds=180)
 
     except Exception as exc:
         logger.error("VM creation failed for vmid=%s: %s", vmid, exc)
-        # Cleanup
         if pve_vm_created:
             try:
                 await pve_client.stop_vm(vmid)
@@ -300,11 +288,21 @@ async def create_vm(
         raise ValueError(f"VM provisioning failed: {exc}") from exc
 
     # ------------------------------------------------------------------
-    # Step 9: Mark VM as running and record transaction
+    # Step 9: Finalise
     # ------------------------------------------------------------------
+    started_at = datetime.now(timezone.utc)
+    password_hash = _hash_password(password)
+
     await db.vms.update_one(
         {"_id": insert_result.inserted_id},
-        {"$set": {"status": "running"}},
+        {
+            "$set": {
+                "status": "running",
+                "started_at": started_at,
+                "expires_at": expires_at,
+                "password_hash": password_hash,
+            }
+        },
     )
 
     await db.transactions.insert_one(
@@ -330,6 +328,27 @@ async def create_vm(
 
 
 # ---------------------------------------------------------------------------
+# VM status polling helper
+# ---------------------------------------------------------------------------
+
+
+async def _poll_vm_running(
+    vmid: int,
+    timeout_seconds: int = 180,
+    poll_interval: float = 5.0,
+) -> None:
+    """Poll GET status/current until status == 'running'. Raises PVEError on timeout."""
+    elapsed = 0.0
+    while elapsed < timeout_seconds:
+        await asyncio.sleep(poll_interval)
+        elapsed += poll_interval
+        status_data = await pve_client.get_vm_status(vmid)
+        if status_data and status_data.get("status") == "running":
+            return
+    raise PVEError(f"VM {vmid} did not reach 'running' state after {timeout_seconds}s")
+
+
+# ---------------------------------------------------------------------------
 # Deletion flow
 # ---------------------------------------------------------------------------
 
@@ -337,19 +356,19 @@ async def create_vm(
 async def delete_vm(vm_doc: dict, db: AsyncIOMotorDatabase) -> None:
     """Delete a VM from Proxmox and mark it expired in DB."""
     vmid = vm_doc["vmid"]
-    vm_object_id = ObjectId(vm_doc["_id"]) if not isinstance(vm_doc["_id"], ObjectId) else vm_doc["_id"]
+    vm_object_id = (
+        ObjectId(vm_doc["_id"]) if not isinstance(vm_doc["_id"], ObjectId) else vm_doc["_id"]
+    )
 
-    # Mark as deleting
     await db.vms.update_one(
         {"_id": vm_object_id},
         {"$set": {"status": "deleting"}},
     )
 
     try:
-        # Stop first (ignore errors — VM might already be stopped)
         try:
             await pve_client.stop_vm(vmid)
-            await asyncio.sleep(2)  # brief pause before delete
+            await asyncio.sleep(2)
         except Exception:
             pass
 
@@ -389,5 +408,3 @@ async def _refund_points(discord_id: str, amount: int, db: AsyncIOMotorDatabase)
             "created_at": datetime.now(timezone.utc),
         }
     )
-
-
