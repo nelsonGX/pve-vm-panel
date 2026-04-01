@@ -13,15 +13,10 @@ import ProvisioningModal, {
 // Types
 // ---------------------------------------------------------------------------
 interface ResourcesData {
-  cpu_total: number
-  cpu_used: number
-  ram_total_gb: number
-  ram_used_gb: number
-  disk_total_gb: number
-  disk_used_gb: number
-  gpu_total: number
-  gpu_used: number
-  available_gpus?: GpuOption[]
+  cpu: { available: number; total: number }
+  ram_gb: { available: number; total: number }
+  disk_gb: { available: number; total: number }
+  gpus: { id: string; available: boolean }[]
 }
 
 interface GpuOption {
@@ -55,7 +50,7 @@ const OS_OPTIONS = [
   { id: 'centos-7', label: 'CentOS 7', group: 'CentOS' },
 ]
 
-const RAM_OPTIONS = [1, 2, 4, 8, 16, 32]
+const RAM_OPTIONS = [1, 2, 4, 8, 16, 32, 48, 64, 96, 128]
 const DURATION_OPTIONS = [
   { label: '1h', hours: 1 },
   { label: '2h', hours: 2 },
@@ -171,10 +166,10 @@ export default function CreatePage() {
   }
 
   // Computed values
-  const maxCpu = resources ? Math.max(1, resources.cpu_total - resources.cpu_used) : 32
-  const maxRam = resources ? Math.max(1, resources.ram_total_gb - resources.ram_used_gb) : 32
-  const maxDisk = resources ? Math.min(800, Math.max(10, resources.disk_total_gb - resources.disk_used_gb)) : 800
-  const availableGpus = resources?.available_gpus?.filter((g) => g.available) ?? []
+  const maxCpu = resources ? Math.max(1, resources.cpu.available) : 32
+  const maxRam = resources ? Math.max(1, resources.ram_gb.available) : 32
+  const maxDisk = resources ? Math.min(800, Math.max(10, resources.disk_gb.available)) : 800
+  const availableGpus: GpuOption[] = resources?.gpus.filter((g) => g.available).map((g) => ({ id: g.id, name: g.id, available: true })) ?? []
   const gpuAvailable = availableGpus.length > 0
 
   const cost =
@@ -186,9 +181,9 @@ export default function CreatePage() {
   const remaining = cost !== null ? balance - cost : null
   const canAfford = remaining === null ? false : remaining >= 0
 
-  const cpuPct = resources ? (resources.cpu_used / resources.cpu_total) * 100 : 0
-  const ramPct = resources ? (resources.ram_used_gb / resources.ram_total_gb) * 100 : 0
-  const diskPct = resources ? (resources.disk_used_gb / resources.disk_total_gb) * 100 : 0
+  const cpuPct = resources ? ((resources.cpu.total - resources.cpu.available) / resources.cpu.total) * 100 : 0
+  const ramPct = resources ? ((resources.ram_gb.total - resources.ram_gb.available) / resources.ram_gb.total) * 100 : 0
+  const diskPct = resources ? ((resources.disk_gb.total - resources.disk_gb.available) / resources.disk_gb.total) * 100 : 0
 
   const canCreate =
     !!selectedOs &&

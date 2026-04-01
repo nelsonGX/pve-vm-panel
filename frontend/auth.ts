@@ -11,37 +11,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async jwt({ token, profile }) {
       if (profile) {
-        token.discordId = (profile as { id: string }).id
-        token.avatar = (profile as { avatar: string }).avatar
+        const p = profile as { id: string; username?: string; global_name?: string; avatar?: string }
+        token.discordId = p.id
+        token.discordUsername = p.username ?? p.global_name ?? token.name ?? p.id
+        token.avatar = p.avatar
       }
       return token
     },
     async session({ session, token }) {
       session.user.discordId = token.discordId as string
+      session.user.discordUsername = token.discordUsername as string
       session.user.avatar = token.avatar as string
       return session
-    },
-    async signIn({ profile }) {
-      if (profile) {
-        try {
-          await fetch(`${process.env.NEXTAUTH_URL}/api/v1/me`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${process.env.INTERNAL_API_SECRET}`,
-              'X-Discord-Id': (profile as { id: string }).id,
-            },
-            body: JSON.stringify({
-              discord_id: (profile as { id: string }).id,
-              discord_username: profile.name,
-              discord_avatar: (profile as { avatar: string }).avatar,
-            }),
-          })
-        } catch {
-          // Non-fatal: user upsert failed, still allow sign in
-        }
-      }
-      return true
     },
   },
 })

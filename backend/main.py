@@ -69,3 +69,7 @@ app.include_router(admin_router)
 @app.get("/health", tags=["health"])
 async def health_check():
     return {"status": "ok"}
+
+
+
+

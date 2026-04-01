@@ -1,23 +1,30 @@
-import { auth } from '@/auth'
+import { getToken } from 'next-auth/jwt'
 import { NextRequest, NextResponse } from 'next/server'
 
-const FASTAPI_BASE = 'http://localhost:8000/api/v1'
+const FASTAPI_BASE = 'http://localhost:8124/api/v1'
+const COOKIE_NAME = 'authjs.session-token'
+const SECRET = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? ''
 
 async function proxy(req: NextRequest): Promise<NextResponse> {
-  const session = await auth()
+  const token = await getToken({
+    req,
+    secret: SECRET,
+    cookieName: COOKIE_NAME,
+    salt: COOKIE_NAME,
+  })
 
-  // Strip the /api/v1 prefix to get the downstream path
   const url = new URL(req.url)
   const downstreamPath = url.pathname.replace(/^\/api\/v1/, '')
   const targetUrl = `${FASTAPI_BASE}${downstreamPath}${url.search}`
 
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    'Content-Type': req.headers.get('Content-Type') ?? 'application/json',
   }
 
-  if (session?.user?.discordId) {
-    headers['Authorization'] = `Bearer ${process.env.INTERNAL_API_SECRET}`
-    headers['X-Discord-Id'] = session.user.discordId
+  const discordId = token?.discordId as string | undefined
+  console.log('[proxy] token:', JSON.stringify(token), 'discordId:', discordId)
+  if (discordId) {
+    headers['X-Discord-Id'] = discordId
   }
 
   const body =

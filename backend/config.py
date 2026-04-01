@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from pydantic import field_validator, model_validator
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DURATION_OPTIONS: list[int] = [1, 2, 4, 8, 12, 24]
@@ -18,8 +18,7 @@ class Settings(BaseSettings):
     NEXTAUTH_SECRET: str
     NEXTAUTH_URL: str
 
-    # Internal API secret (used by Next.js → FastAPI calls)
-    INTERNAL_API_SECRET: str
+    INTERNAL_API_SECRET: str = ""
 
     # MongoDB
     MONGODB_URI: str

@@ -1,14 +1,16 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  async rewrites() {
-    return [
+  images: {
+    remotePatterns: [
       {
-        source: '/api/v1/:path*',
-        destination: 'http://localhost:8000/api/v1/:path*',
+        protocol: 'https',
+        hostname: 'cdn.discordapp.com',
+        port: '',
+        pathname: '/avatars/**',
       },
-    ]
-  },
+    ],
+  }
 };
 
 export default nextConfig;

@@ -1,48 +1,20 @@
 from __future__ import annotations
 
 from bson import ObjectId
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from pydantic import BaseModel
 
-from auth import get_current_user, upsert_user, verify_internal_secret
+from auth import get_current_user
 from database import get_db
-from models.transaction import TransactionResponse
-from models.user import UserResponse
 
 router = APIRouter(tags=["me"])
-
-
-# -------------------------------------------------------------------------
-# POST /me  — called by Next.js after OAuth login to upsert user
-# -------------------------------------------------------------------------
-
-class UpsertUserBody(BaseModel):
-    discord_id: str
-    discord_username: str
-    discord_avatar: str | None = None
-
-
-@router.post("/me", response_model=UserResponse)
-async def upsert_me(
-    body: UpsertUserBody,
-    _: None = Depends(verify_internal_secret),
-    db: AsyncIOMotorDatabase = Depends(get_db),
-):
-    user = await upsert_user(
-        discord_id=body.discord_id,
-        username=body.discord_username,
-        avatar=body.discord_avatar,
-        db=db,
-    )
-    return _to_user_response(user)
 
 
 # -------------------------------------------------------------------------
 # GET /me
 # -------------------------------------------------------------------------
 
-@router.get("/me", response_model=UserResponse)
+@router.get("/me")
 async def get_me(
     current_user: dict = Depends(get_current_user),
 ):

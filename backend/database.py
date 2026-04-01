@@ -32,7 +32,6 @@ async def create_indexes() -> None:
     await db.vms.create_index(
         "ip_address",
         unique=True,
-        sparse=True,
         partialFilterExpression={"status": {"$in": ["provisioning", "running"]}},
         name="vms_ip_active_unique",
     )

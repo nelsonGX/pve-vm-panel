@@ -12,33 +12,35 @@ import ConfirmDialog from '@/components/ConfirmDialog'
 interface Code {
   id: string
   code: string
-  points: number
+  points_value: number
   max_uses: number
-  uses: number
+  current_uses: number
   created_at: string
   expires_at?: string
+  is_active: boolean
 }
 
 interface AdminVM {
-  id: string
-  name: string
-  owner_discord_id: string
-  owner_username: string
+  vm_id: string
+  vmid: number
+  user_id: string
   os: string
   cpu_cores: number
   ram_gb: number
   disk_gb: number
-  ip?: string
+  ip_address?: string
+  username?: string
   status: string
   expires_at: string
+  points_charged: number
 }
 
 interface AdminUser {
+  id: string
   discord_id: string
   discord_username: string
   points: number
-  active_vm_count: number
-  joined_at: string
+  created_at: string
 }
 
 type Tab = 'codes' | 'vms' | 'users'
@@ -63,7 +65,7 @@ function CodesTab() {
     setError(null)
     try {
       const data = await clientApiFetch('/admin/codes')
-      setCodes(data as Code[])
+      setCodes((data as { items: Code[] }).items)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load codes')
     } finally {
@@ -80,7 +82,7 @@ function CodesTab() {
     try {
       await clientApiFetch('/admin/codes', {
         method: 'POST',
-        body: JSON.stringify({ points: newPoints, max_uses: newMaxUses }),
+        body: JSON.stringify({ points_value: newPoints, max_uses: newMaxUses }),
       })
       await loadCodes()
     } catch (err) {
@@ -169,9 +171,9 @@ function CodesTab() {
               {codes.map((c) => (
                 <tr key={c.id} className="border-t border-gray-800 bg-gray-900 hover:bg-gray-800/50">
                   <td className="px-4 py-2 font-mono text-gray-200">{c.code}</td>
-                  <td className="px-4 py-2 text-gray-300">{c.points.toLocaleString()}</td>
+                  <td className="px-4 py-2 text-gray-300">{c.points_value.toLocaleString()}</td>
                   <td className="px-4 py-2 text-gray-400">
-                    {c.uses} / {c.max_uses}
+                    {c.current_uses} / {c.max_uses}
                   </td>
                   <td className="px-4 py-2 text-gray-400">
                     {c.expires_at ? new Date(c.expires_at).toLocaleDateString() : '—'}
@@ -215,7 +217,7 @@ function VMsTab() {
     setError(null)
     try {
       const data = await clientApiFetch('/admin/vms')
-      setVMs(data as AdminVM[])
+      setVMs((data as { items: AdminVM[] }).items)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load VMs')
     } finally {
@@ -229,7 +231,7 @@ function VMsTab() {
     if (!deleteTarget) return
     try {
       await clientApiFetch(`/admin/vms/${deleteTarget}`, { method: 'DELETE' })
-      setVMs((prev) => prev.filter((v) => v.id !== deleteTarget))
+      setVMs((prev) => prev.filter((v) => v.vm_id !== deleteTarget))
     } catch {
       await loadVMs()
     } finally {
@@ -266,16 +268,16 @@ function VMsTab() {
           </thead>
           <tbody>
             {vms.map((vm) => (
-              <tr key={vm.id} className="border-t border-gray-800 bg-gray-900 hover:bg-gray-800/50">
+              <tr key={vm.vm_id} className="border-t border-gray-800 bg-gray-900 hover:bg-gray-800/50">
                 <td className="px-4 py-2">
-                  <p className="font-medium text-gray-200">{vm.name}</p>
+                  <p className="font-medium text-gray-200">{vm.username ?? vm.vm_id}</p>
                   <p className="text-xs text-gray-500">{vm.os}</p>
                 </td>
-                <td className="px-4 py-2 text-gray-400">{vm.owner_username}</td>
+                <td className="px-4 py-2 text-gray-400">{vm.user_id}</td>
                 <td className="px-4 py-2 text-gray-400">
                   {vm.cpu_cores}C / {vm.ram_gb}GB / {vm.disk_gb}GB
                 </td>
-                <td className="px-4 py-2 font-mono text-gray-300">{vm.ip ?? '—'}</td>
+                <td className="px-4 py-2 font-mono text-gray-300">{vm.ip_address ?? '—'}</td>
                 <td className="px-4 py-2">
                   <span className={`rounded px-2 py-0.5 text-xs font-medium ${STATUS_CLASSES[vm.status] ?? 'bg-gray-700 text-gray-400'}`}>
                     {vm.status}
@@ -286,7 +288,7 @@ function VMsTab() {
                 </td>
                 <td className="px-4 py-2">
                   <button
-                    onClick={() => setDeleteTarget(vm.id)}
+                    onClick={() => setDeleteTarget(vm.vm_id)}
                     className="rounded bg-red-900 px-2 py-1 text-xs text-red-300 hover:bg-red-800"
                   >
                     Force Delete
@@ -326,7 +328,7 @@ function UsersTab() {
     setError(null)
     try {
       const data = await clientApiFetch('/admin/users')
-      setUsers(data as AdminUser[])
+      setUsers((data as { items: AdminUser[] }).items)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load users')
     } finally {
@@ -342,7 +344,7 @@ function UsersTab() {
     setAdjusting(true)
     setAdjustError(null)
     try {
-      await clientApiFetch(`/admin/users/${adjustTarget}/points`, {
+      await clientApiFetch(`/admin/users/${adjustTarget}/adjust-points`, {
         method: 'POST',
         body: JSON.stringify({ delta: adjustDelta, reason: adjustReason }),
       })
@@ -366,7 +368,7 @@ function UsersTab() {
         <table className="w-full text-sm">
           <thead className="bg-gray-800">
             <tr>
-              {['User', 'Discord ID', 'Points', 'Active VMs', 'Joined', 'Actions'].map((h) => (
+              {['User', 'Discord ID', 'Points', 'Joined', 'Actions'].map((h) => (
                 <th key={h} className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                   {h}
                 </th>
@@ -379,8 +381,7 @@ function UsersTab() {
                 <td className="px-4 py-2 font-medium text-gray-200">{u.discord_username}</td>
                 <td className="px-4 py-2 font-mono text-xs text-gray-500">{u.discord_id}</td>
                 <td className="px-4 py-2 text-indigo-300 font-medium">{u.points.toLocaleString()}</td>
-                <td className="px-4 py-2 text-gray-400">{u.active_vm_count}</td>
-                <td className="px-4 py-2 text-gray-500">{new Date(u.joined_at).toLocaleDateString()}</td>
+                <td className="px-4 py-2 text-gray-500">{new Date(u.created_at).toLocaleDateString()}</td>
                 <td className="px-4 py-2">
                   {adjustTarget === u.discord_id ? (
                     <form onSubmit={handleAdjust} className="flex flex-col gap-1.5 min-w-[220px]">
