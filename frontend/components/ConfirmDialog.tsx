@@ -39,29 +39,29 @@ export default function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
       onClick={onCancel}
     >
       <div
-        className="w-full max-w-md rounded-lg border border-gray-700 bg-gray-900 p-6 shadow-xl"
+        className="animate-scale-in w-full max-w-md rounded-xl border border-zinc-700/60 bg-zinc-900 p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="mb-2 text-lg font-semibold text-gray-100">{title}</h2>
-        <p className="mb-6 text-sm text-gray-400">{message}</p>
-        <div className="flex justify-end gap-3">
+        <h2 className="mb-2 text-lg font-semibold text-zinc-100">{title}</h2>
+        <p className="mb-6 text-sm text-zinc-400">{message}</p>
+        <div className="flex justify-end gap-2">
           <button
             ref={cancelRef}
             onClick={onCancel}
-            className="rounded bg-gray-700 px-4 py-2 text-sm font-medium text-gray-200 transition-colors hover:bg-gray-600"
+            className="rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-200 transition-all duration-150 hover:border-zinc-600 hover:bg-zinc-700 active:scale-95"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
-            className={`rounded px-4 py-2 text-sm font-medium transition-colors ${
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition-all duration-150 active:scale-95 ${
               danger
-                ? 'bg-red-600 text-white hover:bg-red-700'
-                : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                ? 'bg-red-600 text-white hover:bg-red-500'
+                : 'bg-indigo-600 text-white hover:bg-indigo-500'
             }`}
           >
             {confirmLabel}

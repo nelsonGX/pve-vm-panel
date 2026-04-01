@@ -18,7 +18,7 @@ export default async function RootLayout({
 
   return (
     <html lang="en" className="h-full antialiased">
-      <body className="flex min-h-full flex-col bg-gray-950 text-gray-100">
+      <body className="flex min-h-full flex-col bg-zinc-950 text-zinc-100">
         <SessionProviderWrapper session={session}>
           <Header />
           <main className="flex flex-1 flex-col">{children}</main>

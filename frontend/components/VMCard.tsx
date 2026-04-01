@@ -28,11 +28,23 @@ const OS_ICONS: Record<string, string> = {
   debian: 'Debian',
 }
 
-const STATUS_CLASSES: Record<VMStatus, string> = {
-  running: 'bg-green-900 text-green-400',
-  provisioning: 'bg-yellow-900 text-yellow-400',
-  error: 'bg-red-900 text-red-400',
-  expired: 'bg-gray-700 text-gray-400',
+const STATUS_STYLES: Record<VMStatus, { badge: string; dot: string }> = {
+  running: {
+    badge: 'border-emerald-800/60 bg-emerald-950/60 text-emerald-400',
+    dot: 'bg-emerald-400 animate-pulse',
+  },
+  provisioning: {
+    badge: 'border-amber-800/60 bg-amber-950/60 text-amber-400',
+    dot: 'bg-amber-400 animate-pulse',
+  },
+  error: {
+    badge: 'border-red-800/60 bg-red-950/60 text-red-400',
+    dot: 'bg-red-400',
+  },
+  expired: {
+    badge: 'border-zinc-700/60 bg-zinc-800/60 text-zinc-500',
+    dot: 'bg-zinc-600',
+  },
 }
 
 function formatDuration(ms: number): string {
@@ -76,56 +88,72 @@ export default function VMCard({ vm, onDelete }: VMCardProps) {
     return () => clearInterval(id)
   }, [expiresAt, isActive])
 
-  const cardOpacity = vm.status === 'expired' ? 'opacity-60' : ''
+  const statusStyle = STATUS_STYLES[vm.status]
 
   return (
     <div
-      className={`flex flex-col gap-3 rounded-lg border border-gray-700 bg-gray-800 p-4 ${cardOpacity}`}
+      className={`group flex flex-col gap-4 rounded-xl border border-zinc-800 bg-zinc-900/80 p-5 shadow-sm transition-all duration-200 hover:border-zinc-700 hover:shadow-md ${
+        vm.status === 'expired' ? 'opacity-55' : ''
+      }`}
     >
       {/* Top row: name + status */}
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-gray-500">
+          <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">
             {getOsLabel(vm.os)}
             {vm.has_gpu && (
-              <span className="ml-2 rounded bg-purple-900 px-1.5 py-0.5 text-xs text-purple-300">
+              <span className="ml-2 rounded-md border border-purple-800/50 bg-purple-950/50 px-1.5 py-0.5 text-xs text-purple-300">
                 GPU
               </span>
             )}
           </p>
-          <h3 className="mt-0.5 font-semibold text-gray-100">{vm.name}</h3>
+          <h3 className="mt-0.5 font-semibold text-zinc-100">{vm.name}</h3>
         </div>
         <span
-          className={`shrink-0 rounded px-2 py-0.5 text-xs font-medium ${STATUS_CLASSES[vm.status]}`}
+          className={`flex shrink-0 items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-medium ${statusStyle.badge}`}
         >
+          <span className={`h-1.5 w-1.5 rounded-full ${statusStyle.dot}`} />
           {vm.status}
         </span>
       </div>
 
       {/* Specs */}
-      <div className="flex flex-wrap gap-3 text-sm text-gray-400">
-        <span>{vm.cpu_cores} vCPU</span>
-        <span>{vm.ram_gb} GB RAM</span>
-        <span>{vm.disk_gb} GB Disk</span>
-        {vm.ip && <span className="font-mono text-gray-300">{vm.ip}</span>}
+      <div className="flex flex-wrap gap-2">
+        {[
+          `${vm.cpu_cores} vCPU`,
+          `${vm.ram_gb} GB RAM`,
+          `${vm.disk_gb} GB Disk`,
+        ].map((spec) => (
+          <span
+            key={spec}
+            className="rounded-md border border-zinc-800 bg-zinc-800/60 px-2 py-0.5 text-xs text-zinc-400"
+          >
+            {spec}
+          </span>
+        ))}
+        {vm.ip && (
+          <span className="rounded-md border border-zinc-800 bg-zinc-800/60 px-2 py-0.5 font-mono text-xs text-zinc-300">
+            {vm.ip}
+          </span>
+        )}
       </div>
 
       {/* Time */}
       <div className="text-sm">
         {isActive ? (
           <span
-            className={
+            className={`font-medium ${
               remaining <= 0
                 ? 'text-red-400'
                 : remaining < 15 * 60 * 1000
-                ? 'text-yellow-400'
-                : 'text-gray-400'
-            }
+                ? 'text-amber-400'
+                : 'text-zinc-400'
+            }`}
           >
             {remaining > 0 ? `Expires in ${formatDuration(remaining)}` : 'Expired'}
           </span>
         ) : (
-          <span className="text-gray-500">Expired {formatAgo(remaining)}</span>
+          <span className="text-zinc-600">Expired {formatAgo(remaining)}</span>
         )}
       </div>
 
@@ -133,7 +161,7 @@ export default function VMCard({ vm, onDelete }: VMCardProps) {
       {isActive && onDelete && (
         <button
           onClick={() => onDelete(vm.id)}
-          className="mt-1 w-full rounded bg-red-900 px-3 py-1.5 text-sm font-medium text-red-300 transition-colors hover:bg-red-800 hover:text-red-200"
+          className="mt-auto w-full rounded-lg border border-red-900/50 bg-red-950/40 px-3 py-1.5 text-sm font-medium text-red-400 transition-all duration-150 hover:border-red-800 hover:bg-red-900/50 hover:text-red-300 active:scale-[0.98]"
         >
           Delete VM
         </button>

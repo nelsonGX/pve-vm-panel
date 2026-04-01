@@ -9,32 +9,32 @@ export default function Header() {
   const { data: session, status } = useSession()
 
   return (
-    <header className="sticky top-0 z-50 border-b border-gray-800 bg-gray-900">
+    <header className="sticky top-0 z-50 border-b border-zinc-800/60 bg-zinc-950/90 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
         {/* Left: brand + nav */}
         <div className="flex items-center gap-6">
           <Link
             href="/"
-            className="text-lg font-bold tracking-tight text-indigo-400 hover:text-indigo-300"
+            className="text-lg font-bold tracking-tight text-indigo-400 transition-colors hover:text-indigo-300"
           >
             PVE Panel
           </Link>
-          <nav className="hidden items-center gap-4 text-sm md:flex">
+          <nav className="hidden items-center gap-1 text-sm md:flex">
             <Link
               href="/"
-              className="text-gray-300 transition-colors hover:text-gray-100"
+              className="rounded-md px-3 py-1.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100"
             >
               Home
             </Link>
             <Link
               href="/vms"
-              className="text-gray-300 transition-colors hover:text-gray-100"
+              className="rounded-md px-3 py-1.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100"
             >
               My VMs
             </Link>
             <Link
               href="/create"
-              className="text-gray-300 transition-colors hover:text-gray-100"
+              className="rounded-md px-3 py-1.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100"
             >
               Create
             </Link>
@@ -53,30 +53,30 @@ export default function Header() {
                     alt={session.user.name ?? 'avatar'}
                     width={32}
                     height={32}
-                    className="rounded"
+                    className="rounded-full ring-2 ring-zinc-700"
                   />
                 ) : (
-                  <div className="flex h-8 w-8 items-center justify-center rounded bg-indigo-700 text-sm font-bold text-white">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-700 text-sm font-bold text-white ring-2 ring-zinc-700">
                     {(session.user.name ?? '?')[0].toUpperCase()}
                   </div>
                 )}
-                <span className="hidden text-sm text-gray-300 sm:inline">
+                <span className="hidden text-sm text-zinc-300 sm:inline">
                   {session.user.name}
                 </span>
               </div>
               <button
                 onClick={() => signOut({ callbackUrl: '/' })}
-                className="rounded bg-gray-700 px-3 py-1.5 text-sm text-gray-200 transition-colors hover:bg-gray-600"
+                className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-300 transition-all duration-150 hover:border-zinc-600 hover:bg-zinc-700 hover:text-zinc-100 active:scale-95"
               >
                 Sign out
               </button>
             </>
           ) : status === 'loading' ? (
-            <div className="h-8 w-24 animate-pulse rounded bg-gray-700" />
+            <div className="h-8 w-24 animate-pulse rounded-lg bg-zinc-800" />
           ) : (
             <button
               onClick={() => signIn('discord', { callbackUrl: '/' })}
-              className="rounded bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+              className="rounded-lg bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white shadow-sm shadow-indigo-900/50 transition-all duration-150 hover:bg-indigo-500 active:scale-95"
             >
               Login with Discord
             </button>

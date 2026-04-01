@@ -22,7 +22,7 @@ export default function RedeemPage() {
   if (status === 'loading') {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-600 border-t-indigo-500" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-zinc-700 border-t-indigo-500" />
       </div>
     )
   }
@@ -56,19 +56,21 @@ export default function RedeemPage() {
 
   return (
     <div className="mx-auto w-full max-w-md px-4 py-10">
-      <h1 className="mb-2 text-2xl font-bold text-gray-100">Redeem Code</h1>
-      <p className="mb-6 text-sm text-gray-400">
-        Enter a gift code to add points to your balance.
-      </p>
+      <div className="animate-fade-in mb-6">
+        <h1 className="mb-1.5 text-2xl font-bold text-zinc-100">Redeem Code</h1>
+        <p className="text-sm text-zinc-500">
+          Enter a gift code to add points to your balance.
+        </p>
+      </div>
 
       <form
         onSubmit={handleSubmit}
-        className="rounded-lg border border-gray-800 bg-gray-900 p-6"
+        className="animate-fade-in stagger-1 rounded-xl border border-zinc-800 bg-zinc-900/80 p-6 shadow-sm"
       >
         <div className="mb-4">
           <label
             htmlFor="code"
-            className="mb-1.5 block text-sm font-medium text-gray-300"
+            className="mb-1.5 block text-sm font-medium text-zinc-300"
           >
             Code
           </label>
@@ -78,7 +80,7 @@ export default function RedeemPage() {
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
             placeholder="XXXX-XXXX-XXXX"
-            className="w-full rounded border border-gray-700 bg-gray-800 px-3 py-2 font-mono text-sm text-gray-100 placeholder-gray-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 font-mono text-sm text-zinc-100 placeholder-zinc-600 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
             disabled={loading}
             autoComplete="off"
             spellCheck={false}
@@ -86,15 +88,15 @@ export default function RedeemPage() {
         </div>
 
         {error && (
-          <div className="mb-4 rounded border border-red-800 bg-red-900/30 px-3 py-2 text-sm text-red-400">
+          <div className="mb-4 rounded-lg border border-red-800/60 bg-red-950/30 px-3 py-2.5 text-sm text-red-400">
             {error}
           </div>
         )}
 
         {result && (
-          <div className="mb-4 rounded border border-green-800 bg-green-900/20 px-3 py-3 text-sm">
-            <p className="font-semibold text-green-400">Code redeemed!</p>
-            <p className="mt-1 text-gray-300">
+          <div className="mb-4 rounded-lg border border-emerald-800/60 bg-emerald-950/30 px-3 py-3 text-sm">
+            <p className="font-semibold text-emerald-400">Code redeemed!</p>
+            <p className="mt-1 text-zinc-300">
               You received{' '}
               <span className="font-bold text-indigo-300">
                 {result.points_awarded.toLocaleString()} points
@@ -110,7 +112,7 @@ export default function RedeemPage() {
         <button
           type="submit"
           disabled={loading || !code.trim()}
-          className="w-full rounded bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-900/40 transition-all duration-150 hover:bg-indigo-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {loading ? 'Redeeming...' : 'Redeem'}
         </button>

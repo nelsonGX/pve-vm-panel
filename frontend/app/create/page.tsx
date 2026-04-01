@@ -139,7 +139,7 @@ export default function CreatePage() {
   if (status === 'loading' || dataLoading) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-600 border-t-indigo-500" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-zinc-700 border-t-indigo-500" />
       </div>
     )
   }
@@ -152,11 +152,11 @@ export default function CreatePage() {
   if (dataError) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <div className="rounded-lg border border-red-800 bg-red-900/30 p-6 text-center">
+        <div className="rounded-xl border border-red-800/60 bg-red-950/30 p-6 text-center">
           <p className="mb-3 text-red-400">{dataError}</p>
           <button
             onClick={loadData}
-            className="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700"
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-500"
           >
             Retry
           </button>
@@ -275,17 +275,17 @@ export default function CreatePage() {
   return (
     <>
       <div className="mx-auto w-full max-w-5xl px-4 py-8">
-        <h1 className="mb-6 text-2xl font-bold text-gray-100">Create VM</h1>
+        <h1 className="animate-fade-in mb-6 text-2xl font-bold text-zinc-100">Create VM</h1>
 
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
           {/* ---------------------------------------------------------------- */}
           {/* Form                                                              */}
           {/* ---------------------------------------------------------------- */}
-          <div className="flex flex-1 flex-col gap-6">
+          <div className="flex flex-1 flex-col gap-5">
 
             {/* OS Selection */}
-            <section className="rounded-lg border border-gray-800 bg-gray-900 p-5">
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">
+            <section className="animate-fade-in stagger-1 rounded-xl border border-zinc-800 bg-zinc-900/80 p-5 shadow-sm">
+              <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-500">
                 Operating System
               </h2>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -294,10 +294,10 @@ export default function CreatePage() {
                     key={os.id}
                     type="button"
                     onClick={() => setSelectedOs(os.id)}
-                    className={`rounded border px-3 py-2 text-sm font-medium transition-colors ${
+                    className={`rounded-lg border px-3 py-2 text-sm font-medium transition-all duration-150 active:scale-95 ${
                       selectedOs === os.id
-                        ? 'border-indigo-500 bg-indigo-900/50 text-indigo-300'
-                        : 'border-gray-700 bg-gray-800 text-gray-300 hover:border-gray-600 hover:bg-gray-700'
+                        ? 'border-indigo-600/60 bg-indigo-950/60 text-indigo-300 shadow-sm shadow-indigo-900/30'
+                        : 'border-zinc-700/60 bg-zinc-800/60 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-800'
                     }`}
                   >
                     {os.label}
@@ -307,8 +307,8 @@ export default function CreatePage() {
             </section>
 
             {/* CPU */}
-            <section className="rounded-lg border border-gray-800 bg-gray-900 p-5">
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">
+            <section className="animate-fade-in stagger-2 rounded-xl border border-zinc-800 bg-zinc-900/80 p-5 shadow-sm">
+              <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-500">
                 CPU Cores
               </h2>
               <div className="flex items-center gap-3">
@@ -316,7 +316,7 @@ export default function CreatePage() {
                   type="button"
                   onClick={() => setCpuCores((v) => Math.max(1, v - 1))}
                   disabled={cpuCores <= 1}
-                  className="flex h-9 w-9 items-center justify-center rounded border border-gray-700 bg-gray-800 text-gray-200 transition-colors hover:bg-gray-700 disabled:opacity-40"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-200 transition-all duration-150 hover:border-zinc-600 hover:bg-zinc-700 active:scale-95 disabled:opacity-40"
                 >
                   −
                 </button>
@@ -330,28 +330,28 @@ export default function CreatePage() {
                       Math.min(maxCpu, Math.max(1, parseInt(e.target.value) || 1)),
                     )
                   }
-                  className="w-20 rounded border border-gray-700 bg-gray-800 px-3 py-1.5 text-center text-sm text-gray-100 focus:border-indigo-500 focus:outline-none"
+                  className="w-20 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-center text-sm text-zinc-100 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
                 />
                 <button
                   type="button"
                   onClick={() => setCpuCores((v) => Math.min(maxCpu, v + 1))}
                   disabled={cpuCores >= maxCpu}
-                  className="flex h-9 w-9 items-center justify-center rounded border border-gray-700 bg-gray-800 text-gray-200 transition-colors hover:bg-gray-700 disabled:opacity-40"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-200 transition-all duration-150 hover:border-zinc-600 hover:bg-zinc-700 active:scale-95 disabled:opacity-40"
                 >
                   +
                 </button>
-                <span className="text-sm text-gray-500">
+                <span className="text-sm text-zinc-500">
                   {maxCpu} available
                 </span>
               </div>
               {cpuCores > maxCpu * 0.8 && (
-                <p className="mt-2 text-xs text-yellow-400">High CPU usage on cluster.</p>
+                <p className="mt-2 text-xs text-amber-400">High CPU usage on cluster.</p>
               )}
             </section>
 
             {/* RAM */}
-            <section className="rounded-lg border border-gray-800 bg-gray-900 p-5">
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">
+            <section className="animate-fade-in stagger-3 rounded-xl border border-zinc-800 bg-zinc-900/80 p-5 shadow-sm">
+              <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-500">
                 RAM
               </h2>
               <div className="flex flex-wrap gap-2">
@@ -361,10 +361,10 @@ export default function CreatePage() {
                     type="button"
                     onClick={() => setRamGb(gb)}
                     disabled={gb > maxRam}
-                    className={`rounded border px-4 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                    className={`rounded-lg border px-4 py-1.5 text-sm font-medium transition-all duration-150 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 ${
                       ramGb === gb
-                        ? 'border-indigo-500 bg-indigo-900/50 text-indigo-300'
-                        : 'border-gray-700 bg-gray-800 text-gray-300 hover:border-gray-600 hover:bg-gray-700'
+                        ? 'border-indigo-600/60 bg-indigo-950/60 text-indigo-300 shadow-sm shadow-indigo-900/30'
+                        : 'border-zinc-700/60 bg-zinc-800/60 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-800'
                     }`}
                   >
                     {gb} GB
@@ -374,12 +374,14 @@ export default function CreatePage() {
             </section>
 
             {/* Disk */}
-            <section className="rounded-lg border border-gray-800 bg-gray-900 p-5">
+            <section className="animate-fade-in stagger-4 rounded-xl border border-zinc-800 bg-zinc-900/80 p-5 shadow-sm">
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">
+                <h2 className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
                   Disk
                 </h2>
-                <span className="text-sm font-medium text-gray-200">{diskGb} GB</span>
+                <span className="rounded-md border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-sm font-medium text-zinc-200">
+                  {diskGb} GB
+                </span>
               </div>
               <input
                 type="range"
@@ -390,16 +392,16 @@ export default function CreatePage() {
                 onChange={(e) => setDiskGb(parseInt(e.target.value))}
                 className="w-full accent-indigo-500"
               />
-              <div className="mt-1 flex justify-between text-xs text-gray-500">
+              <div className="mt-1.5 flex justify-between text-xs text-zinc-600">
                 <span>10 GB</span>
                 <span>{maxDisk} GB</span>
               </div>
             </section>
 
             {/* GPU */}
-            <section className="rounded-lg border border-gray-800 bg-gray-900 p-5">
+            <section className="animate-fade-in stagger-4 rounded-xl border border-zinc-800 bg-zinc-900/80 p-5 shadow-sm">
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">
+                <h2 className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
                   GPU
                 </h2>
                 <button
@@ -412,25 +414,25 @@ export default function CreatePage() {
                     if (hasGpu) setSelectedGpu('')
                   }}
                   disabled={!gpuAvailable}
-                  className={`relative h-6 w-11 rounded-full transition-colors focus:outline-none disabled:cursor-not-allowed disabled:opacity-40 ${
-                    hasGpu ? 'bg-indigo-600' : 'bg-gray-600'
+                  className={`relative h-6 w-11 rounded-full transition-colors duration-200 focus:outline-none disabled:cursor-not-allowed disabled:opacity-40 ${
+                    hasGpu ? 'bg-indigo-600' : 'bg-zinc-700'
                   }`}
                 >
                   <span
-                    className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
+                    className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
                       hasGpu ? 'translate-x-5' : 'translate-x-0'
                     }`}
                   />
                 </button>
               </div>
               {!gpuAvailable && (
-                <p className="text-xs text-gray-500">No GPUs available.</p>
+                <p className="text-xs text-zinc-600">No GPUs available.</p>
               )}
               {hasGpu && availableGpus.length > 0 && (
                 <select
                   value={selectedGpu}
                   onChange={(e) => setSelectedGpu(e.target.value)}
-                  className="mt-2 w-full rounded border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-100 focus:border-indigo-500 focus:outline-none"
+                  className="mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
                 >
                   <option value="">Select GPU...</option>
                   {availableGpus.map((g) => (
@@ -443,8 +445,8 @@ export default function CreatePage() {
             </section>
 
             {/* Duration */}
-            <section className="rounded-lg border border-gray-800 bg-gray-900 p-5">
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">
+            <section className="animate-fade-in stagger-4 rounded-xl border border-zinc-800 bg-zinc-900/80 p-5 shadow-sm">
+              <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-500">
                 Duration
               </h2>
               <div className="flex flex-wrap gap-2">
@@ -453,10 +455,10 @@ export default function CreatePage() {
                     key={d.hours}
                     type="button"
                     onClick={() => setDurationHours(d.hours)}
-                    className={`rounded border px-4 py-1.5 text-sm font-medium transition-colors ${
+                    className={`rounded-lg border px-4 py-1.5 text-sm font-medium transition-all duration-150 active:scale-95 ${
                       durationHours === d.hours
-                        ? 'border-indigo-500 bg-indigo-900/50 text-indigo-300'
-                        : 'border-gray-700 bg-gray-800 text-gray-300 hover:border-gray-600 hover:bg-gray-700'
+                        ? 'border-indigo-600/60 bg-indigo-950/60 text-indigo-300 shadow-sm shadow-indigo-900/30'
+                        : 'border-zinc-700/60 bg-zinc-800/60 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-800'
                     }`}
                   >
                     {d.label}
@@ -470,34 +472,34 @@ export default function CreatePage() {
           {/* Cost Sidebar                                                      */}
           {/* ---------------------------------------------------------------- */}
           <div className="w-full lg:w-72 lg:shrink-0">
-            <div className="sticky top-20 rounded-lg border border-gray-800 bg-gray-900 p-5">
-              <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-500">
+            <div className="animate-fade-in stagger-2 sticky top-20 rounded-xl border border-zinc-800 bg-zinc-900/80 p-5 shadow-sm">
+              <h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-zinc-500">
                 Cost Summary
               </h2>
 
-              <dl className="flex flex-col gap-2 text-sm">
+              <dl className="flex flex-col gap-2.5 text-sm">
                 <div className="flex justify-between">
-                  <dt className="text-gray-400">Required</dt>
-                  <dd className="font-semibold text-gray-100">
+                  <dt className="text-zinc-500">Required</dt>
+                  <dd className="font-semibold text-zinc-100">
                     {cost !== null ? `${cost.toLocaleString()} pts` : '—'}
                   </dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-gray-400">Your balance</dt>
-                  <dd className="font-semibold text-gray-100">
+                  <dt className="text-zinc-500">Your balance</dt>
+                  <dd className="font-semibold text-zinc-100">
                     {balance.toLocaleString()} pts
                   </dd>
                 </div>
-                <div className="my-1 border-t border-gray-800" />
+                <div className="my-1 border-t border-zinc-800" />
                 <div className="flex justify-between">
-                  <dt className="text-gray-400">After purchase</dt>
+                  <dt className="text-zinc-500">After purchase</dt>
                   <dd
                     className={`font-bold ${
                       remaining === null
-                        ? 'text-gray-400'
+                        ? 'text-zinc-500'
                         : remaining < 0
                         ? 'text-red-400'
-                        : 'text-green-400'
+                        : 'text-emerald-400'
                     }`}
                   >
                     {remaining !== null
@@ -510,16 +512,16 @@ export default function CreatePage() {
               {/* Warnings */}
               <div className="mt-3 flex flex-col gap-1">
                 {cpuPct >= 80 && (
-                  <p className="text-xs text-yellow-400">Warning: CPU at {cpuPct.toFixed(0)}%</p>
+                  <p className="text-xs text-amber-400">Warning: CPU at {cpuPct.toFixed(0)}%</p>
                 )}
                 {ramPct >= 80 && (
-                  <p className="text-xs text-yellow-400">Warning: RAM at {ramPct.toFixed(0)}%</p>
+                  <p className="text-xs text-amber-400">Warning: RAM at {ramPct.toFixed(0)}%</p>
                 )}
                 {diskPct >= 80 && (
-                  <p className="text-xs text-yellow-400">Warning: Disk at {diskPct.toFixed(0)}%</p>
+                  <p className="text-xs text-amber-400">Warning: Disk at {diskPct.toFixed(0)}%</p>
                 )}
                 {!selectedOs && (
-                  <p className="text-xs text-gray-500">Select an OS to continue.</p>
+                  <p className="text-xs text-zinc-600">Select an OS to continue.</p>
                 )}
                 {!canAfford && cost !== null && (
                   <p className="text-xs text-red-400">Insufficient points.</p>
@@ -530,7 +532,7 @@ export default function CreatePage() {
                 type="button"
                 onClick={handleCreate}
                 disabled={!canCreate}
-                className="mt-4 w-full rounded bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="mt-4 w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-900/40 transition-all duration-150 hover:bg-indigo-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Create VM
               </button>
@@ -540,11 +542,11 @@ export default function CreatePage() {
       </div>
 
       {/* Mobile cost bar */}
-      <div className="fixed bottom-0 left-0 right-0 border-t border-gray-800 bg-gray-900 px-4 py-3 lg:hidden">
+      <div className="fixed bottom-0 left-0 right-0 border-t border-zinc-800 bg-zinc-900/95 px-4 py-3 backdrop-blur-md lg:hidden">
         <div className="flex items-center justify-between">
           <div className="text-sm">
-            <span className="text-gray-400">Cost: </span>
-            <span className="font-bold text-gray-100">
+            <span className="text-zinc-500">Cost: </span>
+            <span className="font-bold text-zinc-100">
               {cost !== null ? `${cost.toLocaleString()} pts` : '—'}
             </span>
           </div>
@@ -552,7 +554,7 @@ export default function CreatePage() {
             type="button"
             onClick={handleCreate}
             disabled={!canCreate}
-            className="rounded bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm shadow-indigo-900/40 transition-all duration-150 hover:bg-indigo-500 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Create VM
           </button>

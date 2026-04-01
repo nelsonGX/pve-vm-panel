@@ -37,7 +37,7 @@ export default function VMsPage() {
   if (status === 'loading' || loading) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-600 border-t-indigo-500" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-zinc-700 border-t-indigo-500" />
       </div>
     )
   }
@@ -70,28 +70,28 @@ export default function VMsPage() {
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-8">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-100">My VMs</h1>
+      <div className="animate-fade-in mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-zinc-100">My VMs</h1>
         <Link
           href="/create"
-          className="rounded bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm shadow-indigo-900/40 transition-all duration-150 hover:bg-indigo-500 active:scale-95"
         >
           + Create VM
         </Link>
       </div>
 
       {error && (
-        <div className="mb-4 rounded border border-red-800 bg-red-900/30 px-4 py-3 text-sm text-red-400">
+        <div className="animate-fade-in mb-4 rounded-lg border border-red-800/60 bg-red-950/30 px-4 py-3 text-sm text-red-400">
           {error}
         </div>
       )}
 
       {vms.length === 0 ? (
-        <div className="rounded-lg border border-gray-800 bg-gray-900 p-10 text-center">
-          <p className="mb-4 text-gray-400">You have no VMs yet.</p>
+        <div className="animate-fade-in stagger-1 rounded-xl border border-zinc-800 bg-zinc-900/80 p-12 text-center">
+          <p className="mb-5 text-zinc-400">You have no VMs yet.</p>
           <Link
             href="/create"
-            className="inline-block rounded bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+            className="inline-block rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white shadow-sm shadow-indigo-900/40 transition-all duration-150 hover:bg-indigo-500 active:scale-95"
           >
             Create your first VM
           </Link>
@@ -99,8 +99,8 @@ export default function VMsPage() {
       ) : (
         <>
           {activeVMs.length > 0 && (
-            <section className="mb-6">
-              <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+            <section className="animate-fade-in stagger-1 mb-6">
+              <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-500">
                 Active ({activeVMs.length})
               </h2>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -116,8 +116,8 @@ export default function VMsPage() {
           )}
 
           {inactiveVMs.length > 0 && (
-            <section>
-              <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+            <section className="animate-fade-in stagger-2">
+              <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-500">
                 Past ({inactiveVMs.length})
               </h2>
               <div className="grid gap-4 sm:grid-cols-2">

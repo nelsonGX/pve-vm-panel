@@ -26,7 +26,7 @@ interface ProvisioningModalProps {
 
 const STEP_ICONS: Record<StepStatus, React.ReactNode> = {
   pending: (
-    <span className="flex h-5 w-5 items-center justify-center rounded-full border border-gray-600 text-gray-500 text-xs">
+    <span className="flex h-5 w-5 items-center justify-center rounded-full border border-zinc-700 text-zinc-600 text-xs">
       ·
     </span>
   ),
@@ -54,7 +54,7 @@ const STEP_ICONS: Record<StepStatus, React.ReactNode> = {
     </span>
   ),
   done: (
-    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-green-800 text-green-400 text-xs font-bold">
+    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-900 text-emerald-400 text-xs font-bold">
       ✓
     </span>
   ),
@@ -75,7 +75,7 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={handleCopy}
-      className="ml-2 rounded bg-gray-700 px-2 py-0.5 text-xs text-gray-300 transition-colors hover:bg-gray-600"
+      className="ml-2 rounded-md border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-xs text-zinc-300 transition-all duration-150 hover:border-zinc-600 hover:bg-zinc-700 active:scale-95"
     >
       {copied ? 'Copied!' : 'Copy'}
     </button>
@@ -95,11 +95,14 @@ export default function ProvisioningModal({
   const isDone = !!credentials
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-      <div className="w-full max-w-lg rounded-lg border border-gray-700 bg-gray-900 p-6 shadow-2xl">
-        <h2 className="mb-4 text-lg font-semibold text-gray-100">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+      <div className="animate-scale-in w-full max-w-lg rounded-xl border border-zinc-700/60 bg-zinc-900 p-6 shadow-2xl">
+        <h2 className="mb-1 text-lg font-semibold text-zinc-100">
           {isDone ? 'VM Ready' : hasError ? 'Provisioning Failed' : 'Provisioning VM...'}
         </h2>
+        {!isDone && !hasError && (
+          <p className="mb-4 text-sm text-zinc-500">This may take a minute...</p>
+        )}
 
         {/* Steps */}
         <div className="mb-6 flex flex-col gap-3">
@@ -109,12 +112,12 @@ export default function ProvisioningModal({
               <span
                 className={`text-sm ${
                   step.status === 'done'
-                    ? 'text-green-400'
+                    ? 'text-emerald-400'
                     : step.status === 'error'
                     ? 'text-red-400'
                     : step.status === 'loading'
-                    ? 'text-gray-200'
-                    : 'text-gray-500'
+                    ? 'text-zinc-200'
+                    : 'text-zinc-600'
                 }`}
               >
                 {step.label}
@@ -125,36 +128,36 @@ export default function ProvisioningModal({
 
         {/* Error */}
         {error && (
-          <div className="mb-4 rounded bg-red-900/50 border border-red-800 px-4 py-3 text-sm text-red-300">
+          <div className="mb-4 rounded-lg border border-red-800/60 bg-red-950/40 px-4 py-3 text-sm text-red-300">
             {error}
           </div>
         )}
 
         {/* Credentials */}
         {credentials && (
-          <div className="mb-4 rounded border border-green-800 bg-green-900/20 p-4">
-            <p className="mb-3 text-sm font-medium text-green-400">
+          <div className="mb-4 rounded-lg border border-emerald-800/60 bg-emerald-950/30 p-4">
+            <p className="mb-3 text-sm font-medium text-emerald-400">
               Your VM is ready. Credentials below:
             </p>
             <div className="flex flex-col gap-2 font-mono text-sm">
               <div className="flex items-center">
-                <span className="w-24 text-gray-500">IP</span>
-                <span className="text-gray-200">{credentials.ip_address}</span>
+                <span className="w-24 text-zinc-500">IP</span>
+                <span className="text-zinc-200">{credentials.ip_address}</span>
                 <CopyButton text={credentials.ip_address} />
               </div>
               <div className="flex items-center">
-                <span className="w-24 text-gray-500">Username</span>
-                <span className="text-gray-200">{credentials.username}</span>
+                <span className="w-24 text-zinc-500">Username</span>
+                <span className="text-zinc-200">{credentials.username}</span>
                 <CopyButton text={credentials.username} />
               </div>
               <div className="flex items-center">
-                <span className="w-24 text-gray-500">Password</span>
-                <span className="text-gray-200">{credentials.password}</span>
+                <span className="w-24 text-zinc-500">Password</span>
+                <span className="text-zinc-200">{credentials.password}</span>
                 <CopyButton text={credentials.password} />
               </div>
               <div className="flex items-center">
-                <span className="w-24 text-gray-500">Expires</span>
-                <span className="text-gray-400">
+                <span className="w-24 text-zinc-500">Expires</span>
+                <span className="text-zinc-400">
                   {new Date(credentials.expires_at).toLocaleString()}
                 </span>
               </div>
@@ -166,7 +169,7 @@ export default function ProvisioningModal({
         {(isDone || hasError) && onClose && (
           <button
             onClick={onClose}
-            className="w-full rounded bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+            className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-900/40 transition-all duration-150 hover:bg-indigo-500 active:scale-[0.98]"
           >
             {isDone ? 'Go to My VMs' : 'Close'}
           </button>
