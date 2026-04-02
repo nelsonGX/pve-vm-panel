@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, Circle, Copy, LoaderCircle, X } from 'lucide-react'
+import { Check, Circle, Copy, X } from 'lucide-react'
 import PButton from '@/components/baseui/pbutton'
+import PDiv from '@/components/baseui/pdiv'
 import PixelSpinner from '@/components/baseui/spinner'
 
 export type StepStatus = 'pending' | 'loading' | 'done' | 'error'
@@ -61,7 +62,7 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={handleCopy}
-      className="ml-2 inline-flex items-center gap-1 border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-xs text-zinc-300 transition-all duration-150 hover:border-zinc-600 hover:bg-zinc-700"
+      className="ml-2 inline-flex items-center gap-1 border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-xs text-zinc-300 transition-all hover:border-zinc-600 hover:bg-zinc-700"
     >
       <Copy className="h-3 w-3" />
       {copied ? 'Copied!' : 'Copy'}
@@ -83,8 +84,8 @@ export default function ProvisioningModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-      <div className="animate-scale-in w-full max-w-lg border-b-4 border-r-4 border-zinc-600 bg-zinc-600 pixel-panel-outer">
-        <div className="border-4 border-zinc-400 bg-zinc-900 pixel-panel-inner p-6">
+      <div className="animate-scale-in w-full max-w-lg">
+        <PDiv fullWidth padding="p-6">
           <h2 className="mb-1 text-lg font-semibold text-zinc-100">
             {isDone ? 'VM Ready' : hasError ? 'Provisioning Failed' : 'Provisioning VM...'}
           </h2>
@@ -92,36 +93,28 @@ export default function ProvisioningModal({
             <p className="mb-4 text-sm text-zinc-500">This may take a minute...</p>
           )}
 
-          {/* Steps */}
           <div className="mb-6 flex flex-col gap-3">
             {steps.map((step, i) => (
               <div key={i} className="flex items-center gap-3">
                 {STEP_ICONS[step.status]}
-                <span
-                  className={`text-sm ${
-                    step.status === 'done'
-                      ? 'text-emerald-400'
-                      : step.status === 'error'
-                      ? 'text-red-400'
-                      : step.status === 'loading'
-                      ? 'text-zinc-200'
-                      : 'text-zinc-600'
-                  }`}
-                >
+                <span className={`text-sm ${
+                  step.status === 'done' ? 'text-emerald-400'
+                  : step.status === 'error' ? 'text-red-400'
+                  : step.status === 'loading' ? 'text-zinc-200'
+                  : 'text-zinc-600'
+                }`}>
                   {step.label}
                 </span>
               </div>
             ))}
           </div>
 
-          {/* Error */}
           {error && (
             <div className="mb-4 border border-red-800 bg-red-950/40 px-4 py-3 text-sm text-red-300">
               {error}
             </div>
           )}
 
-          {/* Credentials */}
           {credentials && (
             <div className="mb-4 border border-emerald-800 bg-emerald-950/30 p-4">
               <p className="mb-3 text-sm font-medium text-emerald-400">
@@ -145,9 +138,7 @@ export default function ProvisioningModal({
                 </div>
                 <div className="flex items-center">
                   <span className="w-24 text-zinc-500">Expires</span>
-                  <span className="text-zinc-400">
-                    {new Date(credentials.expires_at).toLocaleString()}
-                  </span>
+                  <span className="text-zinc-400">{new Date(credentials.expires_at).toLocaleString()}</span>
                 </div>
                 <div className="mt-3 border border-yellow-700 bg-yellow-900/30 p-3 text-sm text-yellow-300">
                   Note: You won{"'"}t be able to see these credentials again, so make sure to copy them somewhere safe!
@@ -156,18 +147,12 @@ export default function ProvisioningModal({
             </div>
           )}
 
-          {/* Close button */}
           {(isDone || hasError) && onClose && (
-            <PButton
-              variant="primary"
-              fullWidth
-              customInnerClass="py-2.5"
-              onClick={onClose}
-            >
+            <PButton variant="primary" fullWidth customInnerClass="py-2.5" onClick={onClose}>
               {isDone ? 'Go to My VMs' : 'Close'}
             </PButton>
           )}
-        </div>
+        </PDiv>
       </div>
     </div>
   )

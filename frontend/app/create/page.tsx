@@ -16,6 +16,7 @@ import BulkProvisioningModal, {
 } from '@/components/BulkProvisioningModal'
 import type { VM } from '@/components/VMCard'
 import PButton from '@/components/baseui/pbutton'
+import PDiv from '@/components/baseui/pdiv'
 import PInput from '@/components/baseui/pinput'
 import PToggleButton from '@/components/baseui/ptogglebutton'
 import PixelSpinner from '@/components/baseui/spinner'
@@ -98,8 +99,7 @@ function computeCost(
   )
 }
 
-// Pixel selector button (for OS, RAM, Duration choices)
-function PixelSelectButton({
+function SelectOptionButton({
   selected,
   disabled,
   onClick,
@@ -110,32 +110,17 @@ function PixelSelectButton({
   onClick: () => void
   children: React.ReactNode
 }) {
-  const outerClass = selected
-    ? 'border-indigo-700 bg-indigo-700'
-    : 'border-zinc-600 bg-zinc-600'
-  const innerClass = selected
-    ? 'border-indigo-400 text-indigo-200'
-    : 'border-zinc-400 text-zinc-300'
-
   return (
-    <button
-      type="button"
+    <PButton
+      variant={selected ? 'primary' : 'secondary'}
       onClick={onClick}
       disabled={disabled}
-      className={`border-b-4 border-r-4 ${outerClass} pixel-panel-outer hover:border-b-6 hover:border-r-6 hover:-translate-x-0.5 hover:-translate-y-0.5 active:border-b-3 active:border-r-3 active:translate-y-0.5 active:translate-x-0.5 transition-all duration-75 ease-in disabled:opacity-40 disabled:cursor-not-allowed`}
-      style={{
-        clipPath: 'polygon(0 4px, 4px 4px, 4px 0, calc(100% - 4px) 0, calc(100% - 4px) 8px, 100% 8px, 100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%, 8px 100%, 8px calc(100% - 4px), 0 calc(100% - 4px))'
-      }}
+      fullWidth
+      className={selected ? '' : 'opacity-90'}
+      customInnerClass={`flex w-full items-center justify-center px-4 py-3 text-sm font-medium ${selected ? 'text-indigo-200' : 'text-zinc-300'}`}
     >
-      <div
-        className={`border-4 ${innerClass} bg-zinc-900/85 px-4 py-2 text-sm font-medium`}
-        style={{
-          clipPath: 'polygon(0 4px, 4px 4px, 4px 0, calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px), 0 calc(100% - 4px))'
-        }}
-      >
-        {children}
-      </div>
-    </button>
+      {children}
+    </PButton>
   )
 }
 
@@ -275,12 +260,12 @@ function CreatePageContent() {
   if (dataError) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <div className="border-b-4 border-r-4 border-red-800 bg-red-800 pixel-panel-outer">
-          <div className="border-4 border-red-400 bg-zinc-900 pixel-panel-inner p-6 text-center">
+        <PDiv shadowColor="red-800" borderColor="red-400" padding="p-6" className="max-w-lg">
+          <div className="text-center">
             <p className="mb-3 text-red-400">{dataError}</p>
             <PButton variant="primary" onClick={loadData}>Retry</PButton>
           </div>
-        </div>
+        </PDiv>
       </div>
     )
   }
@@ -584,7 +569,7 @@ function CreatePageContent() {
 
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {OS_OPTIONS.map((os) => (
-                <PixelSelectButton
+                <SelectOptionButton
                   key={os.id}
                   selected={selectedOs === os.id && selectedSourceVmid === null}
                   onClick={() => {
@@ -593,7 +578,7 @@ function CreatePageContent() {
                   }}
                 >
                   {os.label}
-                </PixelSelectButton>
+                </SelectOptionButton>
               ))}
             </div>
 
@@ -610,7 +595,7 @@ function CreatePageContent() {
                 ) : (
                   <div className="flex flex-col gap-2">
                     {userVms.map((vm) => (
-                      <PixelSelectButton
+                      <SelectOptionButton
                         key={vm.vmid}
                         selected={selectedSourceVmid === vm.vmid}
                         onClick={() => {
@@ -629,7 +614,7 @@ function CreatePageContent() {
                             {selectedSourceVmid === vm.vmid ? 'Selected' : 'Use as template'}
                           </span>
                         </span>
-                      </PixelSelectButton>
+                      </SelectOptionButton>
                     ))}
                   </div>
                 )}
@@ -688,14 +673,14 @@ function CreatePageContent() {
             <h2 className="mb-4 text-lg font-semibold text-zinc-100">How much RAM?</h2>
             <div className="flex flex-wrap gap-2">
               {RAM_OPTIONS.map((gb) => (
-                <PixelSelectButton
+                <SelectOptionButton
                   key={gb}
                   selected={ramGb === gb}
                   disabled={gb > maxRam}
                   onClick={() => setRamGb(gb)}
                 >
                   {gb} GB
-                </PixelSelectButton>
+                </SelectOptionButton>
               ))}
             </div>
             {ramPct >= 80 && (
@@ -749,14 +734,11 @@ function CreatePageContent() {
               />
             </div>
             {hasGpu && (
-              <div className="border-b-2 border-r-2 border-zinc-600 bg-zinc-600 pixel-panel-outer">
+              <PDiv fullWidth padding="p-0">
                 <select
                   value={selectedGpu}
                   onChange={(e) => setSelectedGpu(e.target.value)}
-                  className="border-2 border-zinc-400 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 w-full pixel-panel-inner outline-none"
-                  style={{
-                    clipPath: 'polygon(0 4px, 4px 4px, 4px 0, calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px), 0 calc(100% - 4px))'
-                  }}
+                  className="w-full bg-transparent px-3 py-2 text-sm text-zinc-100 outline-none"
                 >
                   <option value="">Select GPU...</option>
                   {availableGpus.map((g) => (
@@ -765,7 +747,7 @@ function CreatePageContent() {
                     </option>
                   ))}
                 </select>
-              </div>
+              </PDiv>
             )}
           </div>
         )
@@ -776,13 +758,13 @@ function CreatePageContent() {
             <h2 className="mb-4 text-lg font-semibold text-zinc-100">How long do you need it?</h2>
             <div className="flex flex-wrap gap-2">
               {DURATION_OPTIONS.map((d) => (
-                <PixelSelectButton
+                <SelectOptionButton
                   key={d.hours}
                   selected={durationHours === d.hours}
                   onClick={() => setDurationHours(d.hours)}
                 >
                   {d.label}
-                </PixelSelectButton>
+                </SelectOptionButton>
               ))}
             </div>
           </div>
@@ -854,7 +836,7 @@ function CreatePageContent() {
                 Password assignment
               </label>
               <div className="flex flex-col gap-2 sm:flex-row">
-                <PixelSelectButton
+                <SelectOptionButton
                   selected={passwordMode === 'random'}
                   onClick={() => setPasswordMode('random')}
                 >
@@ -862,8 +844,8 @@ function CreatePageContent() {
                     <span className="font-medium">Random per VM</span>
                     <span className="text-xs opacity-70">Each VM gets a unique random password</span>
                   </span>
-                </PixelSelectButton>
-                <PixelSelectButton
+                </SelectOptionButton>
+                <SelectOptionButton
                   selected={passwordMode === 'unified'}
                   onClick={() => setPasswordMode('unified')}
                 >
@@ -871,7 +853,7 @@ function CreatePageContent() {
                     <span className="font-medium">Unified password</span>
                     <span className="text-xs opacity-70">All VMs share one password</span>
                   </span>
-                </PixelSelectButton>
+                </SelectOptionButton>
               </div>
 
               {passwordMode === 'unified' && (
@@ -897,8 +879,8 @@ function CreatePageContent() {
         return (
           <div>
             <h2 className="mb-4 text-lg font-semibold text-zinc-100">Review your configuration</h2>
-            <div className="border-b-4 border-r-4 border-zinc-600 bg-zinc-600 w-full pixel-panel-outer">
-              <dl className="border-4 border-zinc-400 bg-zinc-900/85 w-full pixel-panel-inner p-4 flex flex-col gap-3 text-sm">
+            <PDiv fullWidth padding="p-4">
+              <dl className="flex flex-col gap-3 text-sm">
                 {[
                   {
                     label: isBulk ? 'Template' : 'OS',
@@ -926,7 +908,7 @@ function CreatePageContent() {
                   </div>
                 ))}
               </dl>
-            </div>
+            </PDiv>
             {!canAfford && cost !== null && (
               <p className="mt-3 text-sm text-red-400">Insufficient points to create {isBulk ? 'these VMs' : 'this VM'}.</p>
             )}
@@ -997,11 +979,11 @@ function CreatePageContent() {
             </div>
 
             {/* Step content */}
-            <section className="animate-fade-in border-b-4 border-r-4 border-zinc-600 bg-zinc-600 w-full pixel-panel-outer">
-              <div className="border-4 border-zinc-400 bg-zinc-900/85 w-full pixel-panel-inner p-6">
+            <PDiv fullWidth padding="p-6" className="animate-fade-in">
+              <section>
                 {StepContent()}
-              </div>
-            </section>
+              </section>
+            </PDiv>
 
             {/* Navigation */}
             <div className="flex items-center justify-between">
@@ -1036,8 +1018,8 @@ function CreatePageContent() {
 
           {/* Cost Sidebar */}
           <div className="w-full lg:w-72 lg:shrink-0">
-            <div className="animate-fade-in stagger-2 sticky top-20 border-b-4 border-r-4 border-zinc-600 bg-zinc-600 w-full pixel-panel-outer">
-              <div className="border-4 border-zinc-400 bg-zinc-900/85 w-full pixel-panel-inner p-5">
+            <PDiv fullWidth padding="p-5" className="animate-fade-in stagger-2 sticky top-20">
+              <div>
                 <h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-zinc-500">
                   Cost Summary
                 </h2>
@@ -1118,7 +1100,7 @@ function CreatePageContent() {
                   )}
                 </div>
               </div>
-            </div>
+            </PDiv>
           </div>
         </div>
       </div>

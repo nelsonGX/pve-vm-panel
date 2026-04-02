@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
+import PButton from '@/components/baseui/pbutton'
+import PDiv from '@/components/baseui/pdiv'
 
 interface TimelineUser {
   username: string
@@ -121,16 +123,16 @@ export default function ResourceTimeline() {
         <h2 className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
           Resource Timeline
         </h2>
-        <button
+        <PButton
+          variant="secondary"
           onClick={fetchData}
-          className="border border-zinc-700 bg-zinc-800 px-2.5 py-1 text-xs text-zinc-400 transition-all duration-150 hover:border-zinc-600 hover:bg-zinc-700"
+          customInnerClass="px-3 py-1 text-xs"
         >
           Refresh
-        </button>
+        </PButton>
       </div>
 
-      <div className="border-b-4 border-r-4 border-zinc-600 bg-zinc-600 w-full pixel-panel-outer">
-      <div className="border-4 border-zinc-400 bg-zinc-900/85 w-full pixel-panel-inner p-4">
+      <PDiv fullWidth padding="p-4">
         {/* Time axis */}
         <div className="relative mb-2 ml-[192px] h-5">
           {ticks.map((tick, i) => {
@@ -239,8 +241,7 @@ export default function ResourceTimeline() {
             <span className="text-[10px] text-zinc-500">Now</span>
           </div>
         </div>
-      </div>
-      </div>
+      </PDiv>
     </div>
   )
 }

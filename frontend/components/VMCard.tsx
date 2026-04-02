@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import PButton from '@/components/baseui/pbutton'
+import PDiv from '@/components/baseui/pdiv'
 
 type VMStatus = 'running' | 'provisioning' | 'error' | 'expired'
 
@@ -94,12 +95,8 @@ export default function VMCard({ vm, onDelete }: VMCardProps) {
   const statusStyle = STATUS_STYLES[vm.status]
 
   return (
-    <div
-      className={`border-b-4 border-r-4 border-zinc-600 bg-zinc-600 w-full pixel-panel-outer ${
-        vm.status === 'expired' ? 'opacity-55' : ''
-      }`}
-    >
-      <div className="border-4 border-zinc-400 bg-zinc-900/85 w-full pixel-panel-inner p-4 flex flex-col gap-4">
+    <PDiv fullWidth padding="p-4" className={vm.status === 'expired' ? 'opacity-55' : ''}>
+      <div className="flex flex-col gap-4">
         {/* Top row: name + status */}
         <div className="flex items-start justify-between gap-2">
           <div>
@@ -113,9 +110,7 @@ export default function VMCard({ vm, onDelete }: VMCardProps) {
             </p>
             <h3 className="mt-0.5 font-semibold text-zinc-100">{vm.name}</h3>
           </div>
-          <span
-            className={`flex shrink-0 items-center gap-1.5 border px-2 py-0.5 text-xs font-medium ${statusStyle.badge}`}
-          >
+          <span className={`flex shrink-0 items-center gap-1.5 border px-2 py-0.5 text-xs font-medium ${statusStyle.badge}`}>
             <span className={`h-1.5 w-1.5 ${statusStyle.dot}`} />
             {vm.status}
           </span>
@@ -123,15 +118,8 @@ export default function VMCard({ vm, onDelete }: VMCardProps) {
 
         {/* Specs */}
         <div className="flex flex-wrap gap-2">
-          {[
-            `${vm.cpu_cores} vCPU`,
-            `${vm.ram_gb} GB RAM`,
-            `${vm.disk_gb} GB Disk`,
-          ].map((spec) => (
-            <span
-              key={spec}
-              className="border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-xs text-zinc-400"
-            >
+          {[`${vm.cpu_cores} vCPU`, `${vm.ram_gb} GB RAM`, `${vm.disk_gb} GB Disk`].map((spec) => (
+            <span key={spec} className="border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-xs text-zinc-400">
               {spec}
             </span>
           ))}
@@ -145,15 +133,9 @@ export default function VMCard({ vm, onDelete }: VMCardProps) {
         {/* Time */}
         <div className="text-sm">
           {isActive ? (
-            <span
-              className={`font-medium ${
-                remaining <= 0
-                  ? 'text-red-400'
-                  : remaining < 15 * 60 * 1000
-                  ? 'text-amber-400'
-                  : 'text-zinc-400'
-              }`}
-            >
+            <span className={`font-medium ${
+              remaining <= 0 ? 'text-red-400' : remaining < 15 * 60 * 1000 ? 'text-amber-400' : 'text-zinc-400'
+            }`}>
               {remaining > 0 ? `Expires in ${formatDuration(remaining)}` : 'Expired'}
             </span>
           ) : (
@@ -163,16 +145,11 @@ export default function VMCard({ vm, onDelete }: VMCardProps) {
 
         {/* Actions */}
         {isActive && onDelete && (
-          <PButton
-            variant="danger"
-            fullWidth
-            customInnerClass="py-1.5"
-            onClick={() => onDelete(vm.id)}
-          >
+          <PButton variant="danger" fullWidth customInnerClass="py-1.5" onClick={() => onDelete(vm.id)}>
             Delete VM
           </PButton>
         )}
       </div>
-    </div>
+    </PDiv>
   )
 }

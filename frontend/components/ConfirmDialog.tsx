@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import PButton from '@/components/baseui/pbutton'
+import PDiv from '@/components/baseui/pdiv'
 
 interface ConfirmDialogProps {
   open: boolean
@@ -44,27 +45,21 @@ export default function ConfirmDialog({
       onClick={onCancel}
     >
       <div
-        className="animate-scale-in w-full max-w-md border-b-4 border-r-4 border-zinc-600 bg-zinc-600 pixel-panel-outer"
+        className="animate-scale-in w-full max-w-md"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="border-4 border-zinc-400 bg-zinc-900 pixel-panel-inner p-6">
+        <PDiv fullWidth padding="p-6">
           <h2 className="mb-2 text-lg font-semibold text-zinc-100">{title}</h2>
           <p className="mb-6 text-sm text-zinc-400">{message}</p>
           <div className="flex justify-end gap-3">
-            <PButton
-              variant="secondary"
-              onClick={onCancel}
-            >
+            <PButton variant="secondary" onClick={onCancel}>
               Cancel
             </PButton>
-            <PButton
-              variant={danger ? 'danger' : 'primary'}
-              onClick={onConfirm}
-            >
+            <PButton variant={danger ? 'danger' : 'primary'} onClick={onConfirm}>
               {confirmLabel}
             </PButton>
           </div>
-        </div>
+        </PDiv>
       </div>
     </div>
   )

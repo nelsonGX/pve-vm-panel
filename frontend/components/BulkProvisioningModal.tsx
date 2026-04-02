@@ -4,11 +4,8 @@ import { useState } from 'react'
 import { Check, Circle, Copy, Download, X } from 'lucide-react'
 import type { StepStatus } from './ProvisioningModal'
 import PButton from '@/components/baseui/pbutton'
+import PDiv from '@/components/baseui/pdiv'
 import PixelSpinner from '@/components/baseui/spinner'
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 
 export interface PrepStep {
   key: string
@@ -40,10 +37,6 @@ interface BulkProvisioningModalProps {
   fatalError: string | null
   onClose?: () => void
 }
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 const STEP_ICON: Record<StepStatus, React.ReactNode> = {
   pending: (
@@ -110,10 +103,6 @@ function downloadCSV(credentials: BulkCredential[]) {
   URL.revokeObjectURL(url)
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
-
 export default function BulkProvisioningModal({
   open,
   vmCount,
@@ -133,16 +122,12 @@ export default function BulkProvisioningModal({
   const finished = doneCount + errorCount
   const isDone = finished === total && total > 0
   const hasFatal = !!fatalError
-
   const sortedCredentials = [...credentials].sort((a, b) => a.vm_index - b.vm_index)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-      <div
-        className="animate-scale-in flex w-full max-w-2xl flex-col border-b-4 border-r-4 border-zinc-600 bg-zinc-600 pixel-panel-outer"
-        style={{ maxHeight: '90vh' }}
-      >
-        <div className="flex flex-col overflow-hidden border-4 border-zinc-400 bg-zinc-900 pixel-panel-inner" style={{ maxHeight: '90vh' }}>
+      <div className="animate-scale-in w-full max-w-2xl" style={{ maxHeight: '90vh' }}>
+        <PDiv fullWidth padding="p-0" innerClassName="flex flex-col overflow-hidden" style={{ maxHeight: '90vh' }}>
 
           {/* Header */}
           <div className="shrink-0 border-b-2 border-zinc-700 p-6 pb-4">
@@ -156,9 +141,8 @@ export default function BulkProvisioningModal({
             {!isDone && !hasFatal && (
               <p className="text-sm text-zinc-500">This may take several minutes.</p>
             )}
-            {/* Overall progress bar */}
             {total > 0 && (
-              <div className="mt-3 h-3 w-full overflow-hidden bg-zinc-800 border border-zinc-700">
+              <div className="mt-3 h-3 w-full overflow-hidden border border-zinc-700 bg-zinc-800">
                 <div
                   className="h-full bg-indigo-500 transition-all duration-500"
                   style={{ width: `${(finished / total) * 100}%` }}
@@ -169,15 +153,12 @@ export default function BulkProvisioningModal({
 
           {/* Scrollable body */}
           <div className="flex-1 overflow-y-auto p-6 pt-4">
-
-            {/* Fatal error */}
             {fatalError && (
               <div className="mb-4 border border-red-800 bg-red-950/40 px-4 py-3 text-sm text-red-300">
                 {fatalError}
               </div>
             )}
 
-            {/* Template prep steps */}
             {hasPrepSteps && prepSteps.length > 0 && (
               <div className="mb-5">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-zinc-500">
@@ -192,16 +173,13 @@ export default function BulkProvisioningModal({
                         : s.status === 'error' ? 'text-red-400'
                         : s.status === 'loading' ? 'text-zinc-200'
                         : 'text-zinc-600'
-                      }`}>
-                        {s.label}
-                      </span>
+                      }`}>{s.label}</span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* VM progress grid */}
             {vmStatuses.length > 0 && (
               <div className="mb-5">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-zinc-500">
@@ -212,13 +190,10 @@ export default function BulkProvisioningModal({
                     <div
                       key={i}
                       className={`flex items-center gap-2 border px-3 py-2 text-sm ${
-                        vm.status === 'done'
-                          ? 'border-emerald-800 bg-emerald-950/30'
-                          : vm.status === 'error'
-                          ? 'border-red-800 bg-red-950/30'
-                          : vm.status === 'loading'
-                          ? 'border-indigo-800 bg-indigo-950/30'
-                          : 'border-zinc-800 bg-zinc-800/30'
+                        vm.status === 'done' ? 'border-emerald-800 bg-emerald-950/30'
+                        : vm.status === 'error' ? 'border-red-800 bg-red-950/30'
+                        : vm.status === 'loading' ? 'border-indigo-800 bg-indigo-950/30'
+                        : 'border-zinc-800 bg-zinc-800/30'
                       }`}
                     >
                       {STEP_ICON[vm.status]}
@@ -233,8 +208,6 @@ export default function BulkProvisioningModal({
                     </div>
                   ))}
                 </div>
-
-                {/* Per-VM errors */}
                 {errors.length > 0 && (
                   <div className="mt-3 flex flex-col gap-1.5">
                     {errors.map((e) => (
@@ -247,18 +220,11 @@ export default function BulkProvisioningModal({
               </div>
             )}
 
-            {/* Credentials table */}
             {sortedCredentials.length > 0 && (
               <div>
                 <div className="mb-2 flex items-center justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
-                    Credentials
-                  </p>
-                  <PButton
-                    variant="secondary"
-                    customInnerClass="py-0.5"
-                    onClick={() => downloadCSV(sortedCredentials)}
-                  >
+                  <p className="text-xs font-semibold uppercase tracking-widest text-zinc-500">Credentials</p>
+                  <PButton variant="secondary" customInnerClass="py-0.5" onClick={() => downloadCSV(sortedCredentials)}>
                     <span className="flex items-center gap-1.5">
                       <Download className="h-3.5 w-3.5" />
                       Download CSV
@@ -271,9 +237,7 @@ export default function BulkProvisioningModal({
                       <thead>
                         <tr className="border-b border-zinc-700">
                           {['#', 'IP Address', 'Username', 'Password', 'Expires'].map((h) => (
-                            <th key={h} className="px-3 py-2 text-left font-semibold text-zinc-500">
-                              {h}
-                            </th>
+                            <th key={h} className="px-3 py-2 text-left font-semibold text-zinc-500">{h}</th>
                           ))}
                         </tr>
                       </thead>
@@ -281,18 +245,10 @@ export default function BulkProvisioningModal({
                         {sortedCredentials.map((c) => (
                           <tr key={c.vm_index} className="border-t border-zinc-800">
                             <td className="px-3 py-2 font-medium text-zinc-400">{c.vm_index + 1}</td>
-                            <td className="px-3 py-2 font-mono text-zinc-200">
-                              {c.ip_address}
-                              <CopyButton text={c.ip_address} />
-                            </td>
+                            <td className="px-3 py-2 font-mono text-zinc-200">{c.ip_address}<CopyButton text={c.ip_address} /></td>
                             <td className="px-3 py-2 font-mono text-zinc-300">{c.username}</td>
-                            <td className="px-3 py-2 font-mono text-zinc-200">
-                              {c.password}
-                              <CopyButton text={c.password} />
-                            </td>
-                            <td className="px-3 py-2 text-zinc-500">
-                              {new Date(c.expires_at).toLocaleString()}
-                            </td>
+                            <td className="px-3 py-2 font-mono text-zinc-200">{c.password}<CopyButton text={c.password} /></td>
+                            <td className="px-3 py-2 text-zinc-500">{new Date(c.expires_at).toLocaleString()}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -306,20 +262,14 @@ export default function BulkProvisioningModal({
             )}
           </div>
 
-          {/* Footer */}
           {(isDone || hasFatal) && onClose && (
             <div className="shrink-0 border-t-2 border-zinc-700 p-4">
-              <PButton
-                variant="primary"
-                fullWidth
-                customInnerClass="py-2.5"
-                onClick={onClose}
-              >
+              <PButton variant="primary" fullWidth customInnerClass="py-2.5" onClick={onClose}>
                 {isDone ? 'Go to My VMs' : 'Close'}
               </PButton>
             </div>
           )}
-        </div>
+        </PDiv>
       </div>
     </div>
   )
