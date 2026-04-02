@@ -16,15 +16,35 @@ interface BulkGroupProps {
   bulkId: string
   vms: VM[]
   onDeleteGroup: (bulkId: string) => void
+  onActionGroup?: (bulkId: string, action: VMAction) => void
   onDeleteVm?: (id: string) => void
+  onStartVm?: (id: string) => void
+  onStopVm?: (id: string) => void
+  onRestartVm?: (id: string) => void
+  loadingAction?: VMAction | 'delete' | null
 }
 
-function BulkGroup({ bulkId, vms, onDeleteGroup, onDeleteVm }: BulkGroupProps) {
+type VMAction = 'start' | 'stop' | 'restart'
+
+function BulkGroup({
+  bulkId,
+  vms,
+  onDeleteGroup,
+  onActionGroup,
+  onDeleteVm,
+  onStartVm,
+  onStopVm,
+  onRestartVm,
+  loadingAction = null,
+}: BulkGroupProps) {
   const [expanded, setExpanded] = useState(vms.length <= 6)
 
   const activeCount = vms.filter(
     (v) => v.status === 'running' || v.status === 'provisioning',
   ).length
+  const runningCount = vms.filter((v) => v.status === 'running').length
+  const stoppedCount = vms.filter((v) => v.status === 'stopped').length
+  const manageableCount = activeCount + stoppedCount
   const shortId = bulkId.slice(0, 8)
 
   return (
@@ -47,21 +67,62 @@ function BulkGroup({ bulkId, vms, onDeleteGroup, onDeleteVm }: BulkGroupProps) {
             </span>
           )}
         </button>
-        {activeCount > 0 && (
-          <PButton variant="danger" customInnerClass="py-1" onClick={() => onDeleteGroup(bulkId)}>
-            Delete All
-          </PButton>
-        )}
+        <div className="flex flex-wrap justify-end gap-2">
+          {stoppedCount > 0 && onActionGroup && (
+            <PButton
+              variant="primary"
+              customInnerClass="py-1"
+              loading={loadingAction === 'start'}
+              onClick={() => onActionGroup(bulkId, 'start')}
+            >
+              Start All
+            </PButton>
+          )}
+          {runningCount > 0 && onActionGroup && (
+            <PButton
+              variant="secondary"
+              customInnerClass="py-1"
+              loading={loadingAction === 'stop'}
+              onClick={() => onActionGroup(bulkId, 'stop')}
+            >
+              Stop All
+            </PButton>
+          )}
+          {runningCount > 0 && onActionGroup && (
+            <PButton
+              variant="gray"
+              customInnerClass="py-1"
+              loading={loadingAction === 'restart'}
+              onClick={() => onActionGroup(bulkId, 'restart')}
+            >
+              Restart All
+            </PButton>
+          )}
+          {manageableCount > 0 && (
+            <PButton
+              variant="danger"
+              customInnerClass="py-1"
+              loading={loadingAction === 'delete'}
+              onClick={() => onDeleteGroup(bulkId)}
+            >
+              Delete All
+            </PButton>
+          )}
+        </div>
       </div>
       {expanded && (
         <div className="border-t-2 border-zinc-700 p-4">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {vms.map((vm) => (
               <VMCard
                 key={vm.id}
                 vm={vm}
+                onStart={onStartVm}
+                onStop={onStopVm}
+                onRestart={onRestartVm}
+                loadingAction={null}
                 onDelete={
-                  onDeleteVm && (vm.status === 'running' || vm.status === 'provisioning')
+                  onDeleteVm && (vm.status === 'running' || vm.status === 'provisioning' || vm.status === 'stopped')
                     ? (id) => onDeleteVm(id)
                     : undefined
                 }
@@ -85,10 +146,14 @@ export default function VMsPage() {
   const [deleting, setDeleting] = useState(false)
   const [bulkDeleteTarget, setBulkDeleteTarget] = useState<string | null>(null)
   const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [vmActionLoading, setVmActionLoading] = useState<{ vmId: string; action: VMAction } | null>(null)
+  const [bulkActionLoading, setBulkActionLoading] = useState<{ bulkId: string; action: VMAction } | null>(null)
 
   const fetchVMs = useCallback(async () => {
     setLoading(true)
     setError(null)
+    setActionError(null)
     try {
       const data = await clientApiFetch('/vms')
       setVms(data as VM[])
@@ -149,8 +214,37 @@ export default function VMsPage() {
     }
   }
 
+  async function handleVmAction(vmId: string, action: VMAction) {
+    setActionError(null)
+    setVmActionLoading({ vmId, action })
+    try {
+      await clientApiFetch(`/vms/${vmId}/${action}`, { method: 'POST' })
+      await fetchVMs()
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : `Failed to ${action} VM`)
+    } finally {
+      setVmActionLoading(null)
+    }
+  }
+
+  async function handleBulkAction(bulkId: string, action: VMAction) {
+    setActionError(null)
+    setBulkActionLoading({ bulkId, action })
+    try {
+      await clientApiFetch(`/vms/bulk/${bulkId}/${action}`, { method: 'POST' })
+      await fetchVMs()
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : `Failed to ${action} bulk VMs`)
+    } finally {
+      setBulkActionLoading(null)
+    }
+  }
+
   const activeVMs = vms.filter((v) => v.status === 'running' || v.status === 'provisioning')
-  const inactiveVMs = vms.filter((v) => v.status !== 'running' && v.status !== 'provisioning')
+  const stoppedVMs = vms.filter((v) => v.status === 'stopped')
+  const inactiveVMs = vms.filter(
+    (v) => v.status !== 'running' && v.status !== 'provisioning' && v.status !== 'stopped',
+  )
 
   function groupByBulk(list: VM[]) {
     const groups = new Map<string, VM[]>()
@@ -168,6 +262,7 @@ export default function VMsPage() {
   }
 
   const { groups: activeGroups, individuals: activeIndividuals } = groupByBulk(activeVMs)
+  const { groups: stoppedGroups, individuals: stoppedIndividuals } = groupByBulk(stoppedVMs)
   const { groups: inactiveGroups, individuals: inactiveIndividuals } = groupByBulk(inactiveVMs)
 
   return (
@@ -187,6 +282,11 @@ export default function VMsPage() {
       {error && (
         <div className="animate-fade-in mb-4 border border-red-800 bg-red-950/30 px-4 py-3 text-sm text-red-400">
           {error}
+        </div>
+      )}
+      {actionError && (
+        <div className="animate-fade-in mb-4 border border-amber-800 bg-amber-950/30 px-4 py-3 text-sm text-amber-300">
+          {actionError}
         </div>
       )}
 
@@ -214,13 +314,57 @@ export default function VMsPage() {
                   bulkId={bulkId}
                   vms={groupVms}
                   onDeleteGroup={setBulkDeleteTarget}
+                  onActionGroup={handleBulkAction}
                   onDeleteVm={(id) => setDeleteTarget(id)}
+                  onStopVm={(id) => handleVmAction(id, 'stop')}
+                  onRestartVm={(id) => handleVmAction(id, 'restart')}
+                  loadingAction={bulkActionLoading?.bulkId === bulkId ? bulkActionLoading.action : null}
                 />
               ))}
               {activeIndividuals.length > 0 && (
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid items-start gap-4 sm:grid-cols-2">
                   {activeIndividuals.map((vm) => (
-                    <VMCard key={vm.id} vm={vm} onDelete={(id) => setDeleteTarget(id)} />
+                    <VMCard
+                      key={vm.id}
+                      vm={vm}
+                      onStop={(id) => handleVmAction(id, 'stop')}
+                      onRestart={(id) => handleVmAction(id, 'restart')}
+                      onDelete={(id) => setDeleteTarget(id)}
+                      loadingAction={vmActionLoading?.vmId === vm.id ? vmActionLoading.action : null}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+
+          {stoppedVMs.length > 0 && (
+            <section className="animate-fade-in stagger-2 mb-6 flex flex-col gap-4">
+              <h2 className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
+                Stopped ({stoppedVMs.length})
+              </h2>
+              {Array.from(stoppedGroups.entries()).map(([bulkId, groupVms]) => (
+                <BulkGroup
+                  key={bulkId}
+                  bulkId={bulkId}
+                  vms={groupVms}
+                  onDeleteGroup={setBulkDeleteTarget}
+                  onActionGroup={handleBulkAction}
+                  onDeleteVm={(id) => setDeleteTarget(id)}
+                  onStartVm={(id) => handleVmAction(id, 'start')}
+                  loadingAction={bulkActionLoading?.bulkId === bulkId ? bulkActionLoading.action : null}
+                />
+              ))}
+              {stoppedIndividuals.length > 0 && (
+                <div className="grid items-start gap-4 sm:grid-cols-2">
+                  {stoppedIndividuals.map((vm) => (
+                    <VMCard
+                      key={vm.id}
+                      vm={vm}
+                      onStart={(id) => handleVmAction(id, 'start')}
+                      onDelete={(id) => setDeleteTarget(id)}
+                      loadingAction={vmActionLoading?.vmId === vm.id ? vmActionLoading.action : null}
+                    />
                   ))}
                 </div>
               )}
@@ -228,7 +372,7 @@ export default function VMsPage() {
           )}
 
           {inactiveVMs.length > 0 && (
-            <section className="animate-fade-in stagger-2 flex flex-col gap-4">
+            <section className="animate-fade-in stagger-3 flex flex-col gap-4">
               <h2 className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
                 Past ({inactiveVMs.length})
               </h2>
@@ -241,7 +385,7 @@ export default function VMsPage() {
                 />
               ))}
               {inactiveIndividuals.length > 0 && (
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid items-start gap-4 sm:grid-cols-2">
                   {inactiveIndividuals.map((vm) => (
                     <VMCard key={vm.id} vm={vm} />
                   ))}
@@ -265,7 +409,7 @@ export default function VMsPage() {
       <ConfirmDialog
         open={!!bulkDeleteTarget}
         title="Delete Bulk Group"
-        message="Delete all active VMs in this bulk group? This cannot be undone."
+        message="Delete all running, provisioning, or stopped VMs in this bulk group? This cannot be undone."
         confirmLabel={bulkDeleting ? 'Deleting...' : 'Delete All'}
         confirmLoading={bulkDeleting}
         danger

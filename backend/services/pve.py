@@ -133,6 +133,11 @@ class PVEClient:
     async def stop_vm(self, vmid: int) -> None:
         await self._post(f"/nodes/{self._node}/qemu/{vmid}/status/stop")
 
+    async def restart_vm(self, vmid: int) -> str:
+        """Restart a VM. Returns UPID when Proxmox provides one."""
+        data = await self._post(f"/nodes/{self._node}/qemu/{vmid}/status/reboot")
+        return str(data) if data is not None else ""
+
     async def delete_vm(self, vmid: int) -> str:
         """Delete a VM (with purge). Returns UPID."""
         data = await self._delete(

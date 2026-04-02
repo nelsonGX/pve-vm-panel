@@ -13,6 +13,7 @@ from auth import get_current_user
 from database import get_db
 from models.vm import BulkVMCreateRequest, VMCreateRequest, VMCreateResponse, VMResponse
 from services.vm_lifecycle import bulk_create_vms, create_vm, delete_vm
+from services.pve import PVEError, pve_client
 
 router = APIRouter(tags=["vms"])
 
@@ -154,14 +155,51 @@ async def remove_bulk_vms(
         {
             "bulk_id": bulk_id,
             "user_id": discord_id,
-            "status": {"$in": ["provisioning", "running"]},
+            "status": {"$in": ["provisioning", "running", "stopped"]},
         }
     ).to_list(length=200)
 
     if not docs:
-        raise HTTPException(status_code=404, detail="No active VMs found for this bulk ID")
+        raise HTTPException(status_code=404, detail="No manageable VMs found for this bulk ID")
 
     await asyncio.gather(*[delete_vm(doc, db) for doc in docs], return_exceptions=True)
+
+
+@router.post("/vms/bulk/{bulk_id}/{action}")
+async def bulk_vm_action(
+    bulk_id: str,
+    action: str,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    discord_id = current_user["discord_id"]
+    action_config = _get_action_config(action)
+    docs = await db.vms.find(
+        {
+            "bulk_id": bulk_id,
+            "user_id": discord_id,
+            "status": action_config["allowed_statuses"],
+        }
+    ).to_list(length=200)
+
+    if not docs:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No VMs in this bulk group can be {action_config['verb']}",
+        )
+
+    results = await asyncio.gather(
+        *[_run_vm_action(doc, db, action) for doc in docs],
+        return_exceptions=True,
+    )
+    failures = [r for r in results if isinstance(r, Exception)]
+    if failures:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to {action} {len(failures)} of {len(docs)} VMs",
+        )
+
+    return {"updated": len(docs), "action": action}
 
 
 @router.delete("/vms/{vm_id}", status_code=204)
@@ -182,10 +220,33 @@ async def remove_vm(
     if vm_doc["user_id"] != current_user["discord_id"]:
         raise HTTPException(status_code=403, detail="You do not own this VM")
 
-    if vm_doc["status"] not in ("provisioning", "running"):
-        raise HTTPException(status_code=400, detail="VM is not active")
+    if vm_doc["status"] not in ("provisioning", "running", "stopped"):
+        raise HTTPException(status_code=400, detail="VM cannot be deleted in its current state")
 
     await delete_vm(vm_doc, db)
+
+
+@router.post("/vms/{vm_id}/{action}")
+async def vm_action(
+    vm_id: str,
+    action: str,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    try:
+        oid = ObjectId(vm_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid vm_id")
+
+    vm_doc = await db.vms.find_one({"_id": oid})
+    if vm_doc is None:
+        raise HTTPException(status_code=404, detail="VM not found")
+
+    if vm_doc["user_id"] != current_user["discord_id"]:
+        raise HTTPException(status_code=403, detail="You do not own this VM")
+
+    await _run_vm_action(vm_doc, db, action)
+    return {"action": action, "vm_id": vm_id}
 
 
 # ---------------------------------------------------------------------------
@@ -218,3 +279,82 @@ def _vm_to_response(doc: dict) -> dict:
         "points_charged": doc.get("points_charged", 0),
         "bulk_id": doc.get("bulk_id"),
     }
+
+
+def _get_action_config(action: str) -> dict:
+    configs = {
+        "start": {
+            "allowed_statuses": {"$in": ["stopped"]},
+            "verb": "started",
+            "result_status": "running",
+        },
+        "stop": {
+            "allowed_statuses": {"$in": ["running"]},
+            "verb": "stopped",
+            "result_status": "stopped",
+        },
+        "restart": {
+            "allowed_statuses": {"$in": ["running"]},
+            "verb": "restarted",
+            "result_status": "running",
+        },
+    }
+    config = configs.get(action)
+    if config is None:
+        raise HTTPException(status_code=404, detail="Unknown VM action")
+    return config
+
+
+async def _run_vm_action(vm_doc: dict, db: AsyncIOMotorDatabase, action: str) -> None:
+    action_config = _get_action_config(action)
+    current_status = vm_doc.get("status")
+    if current_status not in action_config["allowed_statuses"]["$in"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"VM cannot be {action_config['verb']} while status is '{current_status}'",
+        )
+
+    vmid = vm_doc["vmid"]
+    vm_object_id = vm_doc["_id"]
+    try:
+        if action == "start":
+            await pve_client.start_vm(vmid)
+            await _poll_for_state(vmid, "running")
+        elif action == "stop":
+            await pve_client.stop_vm(vmid)
+            await _poll_for_state(vmid, "stopped")
+        elif action == "restart":
+            reboot_upid = await pve_client.restart_vm(vmid)
+            if reboot_upid:
+                await pve_client.poll_task(reboot_upid, timeout_seconds=300)
+            await _poll_for_state(vmid, "running")
+
+        await db.vms.update_one(
+            {"_id": vm_object_id},
+            {"$set": {"status": action_config["result_status"]}},
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Failed to {action} VM {vmid}: {exc}") from exc
+
+
+async def _poll_for_state(
+    vmid: int,
+    expected_state: str,
+    timeout_seconds: int = 180,
+    poll_interval: float = 3.0,
+) -> None:
+    elapsed = 0.0
+    while elapsed < timeout_seconds:
+        await asyncio.sleep(poll_interval)
+        elapsed += poll_interval
+        try:
+            status_data = await pve_client.get_vm_status(vmid)
+        except Exception as exc:
+            raise PVEError(f"Failed to query VM {vmid} status: {exc}") from exc
+
+        if status_data and status_data.get("status") == expected_state:
+            return
+
+    raise PVEError(f"VM {vmid} did not reach '{expected_state}' after {timeout_seconds}s")
