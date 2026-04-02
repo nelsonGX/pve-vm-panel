@@ -6,12 +6,16 @@ import PointsBadge from './PointsBadge'
 import Image from 'next/image'
 import PButton from '@/components/baseui/pbutton'
 import PixelSpinner from '@/components/baseui/spinner'
+import { useRouter } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
+import Icon from './baseui/icon'
+import { Gift } from 'lucide-react'
 
 export default function Header() {
   const { data: session, status } = useSession()
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const router = useRouter()
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -30,7 +34,7 @@ export default function Header() {
         <div className="flex items-center space-x-8">
           <Link
             href="/"
-            className="text-2xl font-bold tracking-tight text-white transition-colors hover:text-indigo-300"
+            className="text-2xl font-bold tracking-tight text-white transition-colors hover:text-blue-300"
           >
             Nelson{"'"}s Free VM
           </Link>
@@ -70,7 +74,7 @@ export default function Header() {
                       style={{ imageRendering: 'pixelated' }}
                     />
                   ) : (
-                    <div className="flex h-8 w-8 items-center justify-center bg-indigo-700 text-sm font-bold text-white ring-2 ring-zinc-600">
+                    <div className="flex h-8 w-8 items-center justify-center bg-blue-700 text-sm font-bold text-white ring-2 ring-zinc-600">
                       {(session.user.name ?? '?')[0].toUpperCase()}
                     </div>
                   )}
@@ -84,32 +88,33 @@ export default function Header() {
 
                 {dropdownOpen && (
                   <div className="absolute right-0 mt-1 w-44 border-2 border-zinc-700 bg-zinc-900 shadow-lg z-50">
-                    <Link
-                      href="/create"
-                      onClick={() => setDropdownOpen(false)}
-                      className="block px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors"
+                    <button
+                      onClick={() => {setDropdownOpen(false); router.push('/create')}}
+                      className="w-full text-left px-4 py-2 text-blue-300 hover:bg-zinc-800 hover:text-white transition-colors items-center flex gap-2"
                     >
+                      <Icon name='add' size={16} />
                       Create VM
-                    </Link>
-                    <Link
-                      href="/bulk-create"
-                      onClick={() => setDropdownOpen(false)}
-                      className="block px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors"
+                    </button>
+                    <button
+                      onClick={() => {setDropdownOpen(false); router.push('/create?bulk')}}
+                      className="w-full text-left px-4 py-2 text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors items-center flex gap-2"
                     >
+                      <Icon name='addbulk' size={16} />
                       Bulk Create VM
-                    </Link>
-                    <Link
-                      href="/redeem"
-                      onClick={() => setDropdownOpen(false)}
-                      className="block px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors"
+                    </button>
+                    <button
+                      onClick={() => {setDropdownOpen(false); router.push('/redeem')}}
+                      className="w-full text-left px-4 py-2 text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors items-center flex gap-2"
                     >
+                      <Gift size={16} />
                       Redeem Code
-                    </Link>
+                    </button>
                     <div className="border-t border-zinc-700" />
                     <button
                       onClick={() => { setDropdownOpen(false); signOut({ callbackUrl: '/' }) }}
-                      className="w-full px-4 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors"
+                      className="w-full px-4 py-2 text-left text-red-400 hover:bg-zinc-800 hover:text-white transition-colors items-center flex gap-2"
                     >
+                      <Icon name='logout' size={16} />
                       Sign out
                     </button>
                   </div>

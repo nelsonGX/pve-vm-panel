@@ -22,6 +22,7 @@ import PTextarea from '@/components/baseui/ptextarea'
 import PToggleButton from '@/components/baseui/ptogglebutton'
 import PixelSpinner from '@/components/baseui/spinner'
 import { toast } from '@/components/baseui/toast-manager'
+import { ChevronsRight, ChevronsLeft } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -314,7 +315,7 @@ function CreatePageContent() {
   if (status === 'loading' || dataLoading) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <PixelSpinner color="bg-indigo-400" size={10} />
+        <PixelSpinner color="bg-blue-400" size={10} />
       </div>
     )
   }
@@ -743,7 +744,7 @@ function CreatePageContent() {
               step={10}
               value={diskGb}
               onChange={(e) => setDiskGb(parseInt(e.target.value))}
-              className="w-full accent-indigo-500"
+              className="w-full accent-blue-500"
             />
             <div className="mt-1.5 flex justify-between text-xs text-zinc-600">
               <span>10 GB</span>
@@ -1014,9 +1015,9 @@ function CreatePageContent() {
                     onClick={() => i < stepIndex && setStepIndex(i)}
                     className={`flex h-7 w-7 items-center justify-center text-xs font-semibold border-2 transition-colors ${
                       i === stepIndex
-                        ? 'border-indigo-400 bg-indigo-700 text-white'
+                        ? 'border-blue-400 bg-blue-700 text-white'
                         : i < stepIndex
-                        ? 'cursor-pointer border-indigo-700 bg-indigo-950 text-indigo-400 hover:bg-indigo-900'
+                        ? 'cursor-pointer border-blue-700 bg-blue-950 text-blue-400 hover:bg-blue-900'
                         : 'border-zinc-700 bg-zinc-800 text-zinc-600'
                     }`}
                   >
@@ -1025,7 +1026,7 @@ function CreatePageContent() {
                   {i < visibleSteps.length - 1 && (
                     <div
                       className={`h-px w-6 transition-colors ${
-                        i < stepIndex ? 'bg-indigo-700' : 'bg-zinc-800'
+                        i < stepIndex ? 'bg-blue-700' : 'bg-zinc-800'
                       }`}
                     />
                   )}
@@ -1049,7 +1050,10 @@ function CreatePageContent() {
                 className={stepIndex === 0 ? 'invisible' : ''}
                 onClick={goBack}
               >
-                ← Back
+                <div className="flex items-center gap-1">
+                  <ChevronsLeft />
+                  <span>Back</span>
+                </div>
               </PButton>
 
               {currentStep.key === 'review' ? (
@@ -1066,7 +1070,9 @@ function CreatePageContent() {
                   disabled={!canNext}
                   onClick={goNext}
                 >
-                  Next →
+                  <div className="flex items-center gap-1">
+                    <span>Next</span> <ChevronsRight />
+                  </div>
                 </PButton>
               )}
             </div>
@@ -1227,7 +1233,7 @@ export default function CreatePage() {
     <Suspense
       fallback={
         <div className="flex flex-1 items-center justify-center">
-          <PixelSpinner color="bg-indigo-400" size={10} />
+          <PixelSpinner color="bg-blue-400" size={10} />
         </div>
       }
     >

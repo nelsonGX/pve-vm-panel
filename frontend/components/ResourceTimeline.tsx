@@ -30,13 +30,13 @@ interface TimelineData {
 }
 
 const STATUS_COLOR: Record<string, string> = {
-  running: 'bg-indigo-500',
+  running: 'bg-blue-500',
   provisioning: 'bg-amber-500',
 }
 
 function Initials({ name }: { name: string }) {
   return (
-    <div className="flex h-7 w-7 shrink-0 items-center justify-center bg-indigo-900 text-xs font-bold text-indigo-300">
+    <div className="flex h-7 w-7 shrink-0 items-center justify-center bg-blue-900 text-xs font-bold text-blue-300">
       {name.slice(0, 2).toUpperCase()}
     </div>
   )
@@ -231,7 +231,7 @@ export default function ResourceTimeline() {
         {/* Legend */}
         <div className="mt-3 ml-48 flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-1.5">
-            <div className="h-2.5 w-4 bg-indigo-500 opacity-75" />
+            <div className="h-2.5 w-4 bg-blue-500 opacity-75" />
             <span className="text-xs text-zinc-300">Running</span>
           </div>
           <div className="flex items-center gap-1.5">

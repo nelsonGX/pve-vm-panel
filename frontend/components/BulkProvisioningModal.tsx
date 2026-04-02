@@ -174,7 +174,7 @@ export default function BulkProvisioningModal({
             {total > 0 && (
               <div className="mt-3 h-3 w-full overflow-hidden border border-zinc-700 bg-zinc-800">
                 <div
-                  className="h-full bg-indigo-500 transition-all duration-500"
+                  className="h-full bg-blue-500 transition-all duration-500"
                   style={{ width: `${(finished / total) * 100}%` }}
                 />
               </div>
@@ -225,7 +225,7 @@ export default function BulkProvisioningModal({
                           : vm.status === 'error'
                             ? 'border-red-800 bg-red-950/30'
                             : vm.status === 'loading'
-                              ? 'border-indigo-800 bg-indigo-950/30'
+                              ? 'border-blue-800 bg-blue-950/30'
                               : 'border-zinc-800 bg-zinc-800/30'
                       }`}
                     >

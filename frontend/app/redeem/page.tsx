@@ -26,7 +26,7 @@ export default function RedeemPage() {
   if (status === 'loading') {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <PixelSpinner color="bg-indigo-400" size={10} />
+        <PixelSpinner color="bg-blue-400" size={10} />
       </div>
     )
   }
@@ -92,9 +92,9 @@ export default function RedeemPage() {
               <p className="font-semibold text-emerald-400">Code redeemed!</p>
               <p className="mt-1 text-zinc-300">
                 You received{' '}
-                <span className="font-bold text-indigo-300">{result.points_awarded.toLocaleString()} points</span>
+                <span className="font-bold text-blue-300">{result.points_awarded.toLocaleString()} points</span>
                 . New balance:{' '}
-                <span className="font-bold text-indigo-300">{result.new_balance.toLocaleString()} pts</span>
+                <span className="font-bold text-blue-300">{result.new_balance.toLocaleString()} pts</span>
               </p>
             </div>
           )}

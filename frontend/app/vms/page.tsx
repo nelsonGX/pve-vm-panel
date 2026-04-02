@@ -184,7 +184,7 @@ export default function VMsPage() {
   if (status === 'loading' || loading) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <PixelSpinner color="bg-indigo-400" size={10} />
+        <PixelSpinner color="bg-blue-400" size={10} />
       </div>
     )
   }
@@ -297,8 +297,8 @@ export default function VMsPage() {
           <div className="text-center">
             <p className="mb-5 text-zinc-400">You have no VMs yet.</p>
             <Link href="/create">
-              <PDiv animated shadowColor="indigo-700" borderColor="indigo-400" padding="px-5 py-2">
-                <span className="text-sm font-medium text-indigo-200">Create your first VM</span>
+              <PDiv animated shadowColor="blue-700" borderColor="blue-400" padding="px-5 py-2">
+                <span className="text-sm font-medium text-blue-200">Create your first VM</span>
               </PDiv>
             </Link>
           </div>

@@ -3,7 +3,7 @@
 import React from 'react';
 
 interface IconProps {
-	name: 'alert' | 'check' | 'error' | 'info' | 'dropdown' | 'dropup' | 'google' | 'passkey' | 'passkeybold' | 'userprofile' | 'discord' | 'github' | 'message' | 'logout' | 'add' | 'server' | 'money' | 'rightarrow' | 'minecraft' | 'rust' | 'palworld' | 'survival' | 'plugins' | 'mods' | 'minigames' | 'cpu' | 'ram' | 'disk' | 'shield' | 'backup' | 'location' | 'creative' | 'prison' | 'custom' | 'bell';
+	name: 'alert' | 'check' | 'error' | 'info' | 'dropdown' | 'dropup' | 'google' | 'passkey' | 'passkeybold' | 'userprofile' | 'discord' | 'github' | 'message' | 'logout' | 'add' | 'server' | 'money' | 'rightarrow' | 'minecraft' | 'rust' | 'palworld' | 'survival' | 'plugins' | 'mods' | 'minigames' | 'cpu' | 'ram' | 'disk' | 'shield' | 'backup' | 'location' | 'creative' | 'prison' | 'custom' | 'bell' | 'addbulk';
 	size?: number;
 	color?: string;
 	className?: string;
@@ -45,6 +45,7 @@ const iconPaths = {
 	prison: '/assets/icons/prison.svg',
 	custom: '/assets/icons/custom.svg',
 	bell: '/assets/icons/bell.svg',
+	addbulk: '/assets/icons/addbulk.svg',
 };
 
 // Global cache for SVG content

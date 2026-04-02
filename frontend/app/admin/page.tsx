@@ -327,7 +327,7 @@ function UsersTab() {
               <tr key={u.discord_id} className="border-t border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800/40">
                 <td className="px-4 py-2.5 font-medium text-zinc-200">{u.discord_username}</td>
                 <td className="px-4 py-2.5 font-mono text-xs text-zinc-600">{u.discord_id}</td>
-                <td className="px-4 py-2.5 font-medium text-indigo-300">{u.points.toLocaleString()}</td>
+                <td className="px-4 py-2.5 font-medium text-blue-300">{u.points.toLocaleString()}</td>
                 <td className="px-4 py-2.5 text-zinc-500">{new Date(u.created_at).toLocaleDateString()}</td>
                 <td className="px-4 py-2.5">
                   {adjustTarget === u.discord_id ? (
@@ -380,7 +380,7 @@ export default function AdminPage() {
   if (status === 'loading') {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <PixelSpinner color="bg-indigo-400" size={10} />
+        <PixelSpinner color="bg-blue-400" size={10} />
       </div>
     )
   }
@@ -409,7 +409,7 @@ export default function AdminPage() {
       <div className="animate-fade-in mb-6 flex items-center gap-3">
         <h1 className="text-2xl font-bold text-zinc-100">Admin</h1>
         {session?.user.name && (
-          <span className="border border-indigo-700 bg-indigo-950 px-2.5 py-0.5 text-xs font-medium text-indigo-300">
+          <span className="border border-blue-700 bg-blue-950 px-2.5 py-0.5 text-xs font-medium text-blue-300">
             {session.user.name}
           </span>
         )}

@@ -108,7 +108,7 @@ export default async function HomePage() {
             <PDiv fullWidth padding="p-6 space-y-4">
               <div className="flex flex-wrap items-center gap-8">
                 <div>
-                  <p className="text-3xl font-bold text-indigo-300">
+                  <p className="text-3xl font-bold text-blue-300">
                     {me ? me.points.toLocaleString() : 'N/A'}
                   </p>
                   <p className="mt-0.5 text-xs font-medium uppercase tracking-wider text-zinc-300">Points</p>
@@ -122,7 +122,7 @@ export default async function HomePage() {
                 </div>
               </div>
               <p>
-                Go to the <Link href="/vms" className="text-indigo-400 hover:underline">My VMs</Link> page to see your active VMs, or click your avatar to create VMs, redeem codes and more.
+                Go to the <Link href="/vms" className="text-blue-400 hover:underline">My VMs</Link> page to see your active VMs, or click your avatar to create VMs, redeem codes and more.
               </p>
             </PDiv>
           </section>
@@ -135,8 +135,8 @@ export default async function HomePage() {
                 Sign in with Discord to view cluster activity and start spinning up VMs.
               </p>
               <Link href="/login">
-                <PDiv animated shadowColor="indigo-700" borderColor="indigo-400" padding="px-6 py-2.5">
-                  <span className="text-sm font-medium text-indigo-200">Login with Discord</span>
+                <PDiv animated shadowColor="blue-700" borderColor="blue-400" padding="px-6 py-2.5">
+                  <span className="text-sm font-medium text-blue-200">Login with Discord</span>
                 </PDiv>
               </Link>
             </div>
