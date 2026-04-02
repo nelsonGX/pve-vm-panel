@@ -6,6 +6,7 @@ type VMStatus = 'running' | 'provisioning' | 'error' | 'expired'
 
 export interface VM {
   id: string
+  vmid: number
   name: string
   os: string
   cpu_cores: number
@@ -15,6 +16,7 @@ export interface VM {
   status: VMStatus
   expires_at: string
   has_gpu: boolean
+  bulk_id?: string
 }
 
 interface VMCardProps {

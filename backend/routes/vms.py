@@ -11,8 +11,8 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from auth import get_current_user
 from database import get_db
-from models.vm import VMCreateRequest, VMCreateResponse, VMResponse
-from services.vm_lifecycle import create_vm, delete_vm
+from models.vm import BulkVMCreateRequest, VMCreateRequest, VMCreateResponse, VMResponse
+from services.vm_lifecycle import bulk_create_vms, create_vm, delete_vm
 
 router = APIRouter(tags=["vms"])
 
@@ -94,6 +94,76 @@ async def provision_vm_stream(
     )
 
 
+@router.post("/vms/bulk/stream")
+async def provision_vms_bulk_stream(
+    body: BulkVMCreateRequest,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    """Stream bulk VM provisioning progress as Server-Sent Events.
+
+    Events:
+      data: {"type": "prep_step", "step": "<name>", "status": "loading"|"done"|"error"}
+      data: {"type": "vm_step", "vm_index": N, "step": "<name>", "status": "loading"|"done"|"error"}
+      data: {"type": "vm_done", "vm_index": N, "credentials": {...}}
+      data: {"type": "vm_error", "vm_index": N, "message": "<msg>"}
+      data: {"type": "complete", "total": N, "succeeded": M}
+      data: {"type": "error", "message": "<msg>"}
+    """
+    queue: asyncio.Queue = asyncio.Queue()
+
+    async def _run() -> None:
+        try:
+            results = await bulk_create_vms(body, current_user, db, progress=queue)
+            await queue.put({
+                "type": "complete",
+                "total": body.count,
+                "succeeded": len(results),
+            })
+        except ValueError as exc:
+            await queue.put({"type": "error", "message": str(exc)})
+        except Exception as exc:
+            await queue.put({"type": "error", "message": f"Unexpected error: {exc}"})
+        finally:
+            await queue.put(None)
+
+    asyncio.create_task(_run())
+
+    async def _stream():
+        while True:
+            item = await queue.get()
+            if item is None:
+                break
+            yield f"data: {json.dumps(item)}\n\n"
+
+    return StreamingResponse(
+        _stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@router.delete("/vms/bulk/{bulk_id}", status_code=204)
+async def remove_bulk_vms(
+    bulk_id: str,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    discord_id = current_user["discord_id"]
+    docs = await db.vms.find(
+        {
+            "bulk_id": bulk_id,
+            "user_id": discord_id,
+            "status": {"$in": ["provisioning", "running"]},
+        }
+    ).to_list(length=200)
+
+    if not docs:
+        raise HTTPException(status_code=404, detail="No active VMs found for this bulk ID")
+
+    await asyncio.gather(*[delete_vm(doc, db) for doc in docs], return_exceptions=True)
+
+
 @router.delete("/vms/{vm_id}", status_code=204)
 async def remove_vm(
     vm_id: str,
@@ -146,4 +216,5 @@ def _vm_to_response(doc: dict) -> dict:
         "created_at": _ensure_utc(doc["created_at"]),
         "expires_at": _ensure_utc(doc["expires_at"]),
         "points_charged": doc.get("points_charged", 0),
+        "bulk_id": doc.get("bulk_id"),
     }

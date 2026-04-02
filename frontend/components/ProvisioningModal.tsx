@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Check, Circle, Copy, LoaderCircle, X } from 'lucide-react'
 
 export type StepStatus = 'pending' | 'loading' | 'done' | 'error'
 
@@ -27,41 +28,23 @@ interface ProvisioningModalProps {
 
 const STEP_ICONS: Record<StepStatus, React.ReactNode> = {
   pending: (
-    <span className="flex h-5 w-5 items-center justify-center rounded-full border border-zinc-700 text-zinc-600 text-xs">
-      ·
+    <span className="flex h-5 w-5 items-center justify-center text-zinc-600">
+      <Circle className="h-4 w-4" />
     </span>
   ),
   loading: (
-    <span className="flex h-5 w-5 items-center justify-center">
-      <svg
-        className="h-4 w-4 animate-spin text-indigo-400"
-        viewBox="0 0 24 24"
-        fill="none"
-      >
-        <circle
-          className="opacity-25"
-          cx="12"
-          cy="12"
-          r="10"
-          stroke="currentColor"
-          strokeWidth="4"
-        />
-        <path
-          className="opacity-75"
-          fill="currentColor"
-          d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-        />
-      </svg>
+    <span className="flex h-5 w-5 items-center justify-center text-indigo-400">
+      <LoaderCircle className="h-4 w-4 animate-spin" />
     </span>
   ),
   done: (
-    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-900 text-emerald-400 text-xs font-bold">
-      ✓
+    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-900 text-emerald-400">
+      <Check className="h-3.5 w-3.5" />
     </span>
   ),
   error: (
-    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-900 text-red-400 text-xs font-bold">
-      ✕
+    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-900 text-red-400">
+      <X className="h-3.5 w-3.5" />
     </span>
   ),
 }
@@ -76,8 +59,9 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={handleCopy}
-      className="ml-2 rounded-md border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-xs text-zinc-300 transition-all duration-150 hover:border-zinc-600 hover:bg-zinc-700 active:scale-95"
+      className="ml-2 inline-flex items-center gap-1 rounded-md border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-xs text-zinc-300 transition-all duration-150 hover:border-zinc-600 hover:bg-zinc-700 active:scale-95"
     >
+      <Copy className="h-3 w-3" />
       {copied ? 'Copied!' : 'Copy'}
     </button>
   )

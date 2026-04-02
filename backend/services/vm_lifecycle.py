@@ -4,8 +4,10 @@ import asyncio
 import ipaddress
 import logging
 import math
+import random
 import secrets
 import string
+import uuid
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
@@ -15,7 +17,7 @@ from pymongo.errors import DuplicateKeyError
 from pymongo import ReturnDocument
 
 from config import settings
-from models.vm import VMCreateRequest, VMCreateResponse
+from models.vm import BulkVMCreateRequest, VMCreateRequest, VMCreateResponse
 from services.pve import PVEError, pve_client
 
 logger = logging.getLogger(__name__)
@@ -117,6 +119,33 @@ def _serialize_doc(doc: dict) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Resource availability helper
+# ---------------------------------------------------------------------------
+
+
+async def _get_available_resources(db: AsyncIOMotorDatabase) -> dict:
+    """Return currently available cluster resources (same logic as GET /resources)."""
+    pipeline = [
+        {"$match": {"status": {"$in": ["provisioning", "running"]}}},
+        {
+            "$group": {
+                "_id": None,
+                "used_cpu": {"$sum": "$cpu_cores"},
+                "used_ram_gb": {"$sum": "$ram_gb"},
+                "used_disk_gb": {"$sum": "$disk_gb"},
+            }
+        },
+    ]
+    result = await db.vms.aggregate(pipeline).to_list(length=1)
+    used = result[0] if result else {"used_cpu": 0, "used_ram_gb": 0, "used_disk_gb": 0}
+    return {
+        "cpu": max(0, settings.RESOURCE_LIMIT_CPU - used["used_cpu"]),
+        "ram_gb": max(0, settings.RESOURCE_LIMIT_RAM_GB - used["used_ram_gb"]),
+        "disk_gb": max(0, settings.RESOURCE_LIMIT_DISK_GB - used["used_disk_gb"]),
+    }
+
+
+# ---------------------------------------------------------------------------
 # Main creation flow
 # ---------------------------------------------------------------------------
 
@@ -139,19 +168,20 @@ async def create_vm(
         raise ValueError(f"OS '{request.os}' is not supported or template not configured")
 
     # ------------------------------------------------------------------
-    # Pre-flight: resource limit checks
+    # Pre-flight: available resource checks
     # ------------------------------------------------------------------
-    if request.cpu_cores > settings.RESOURCE_LIMIT_CPU:
+    avail = await _get_available_resources(db)
+    if request.cpu_cores > avail["cpu"]:
         raise ValueError(
-            f"CPU cores {request.cpu_cores} exceeds limit {settings.RESOURCE_LIMIT_CPU}"
+            f"Not enough CPU available: need {request.cpu_cores} cores, only {avail['cpu']} free"
         )
-    if request.ram_gb > settings.RESOURCE_LIMIT_RAM_GB:
+    if request.ram_gb > avail["ram_gb"]:
         raise ValueError(
-            f"RAM {request.ram_gb}GB exceeds limit {settings.RESOURCE_LIMIT_RAM_GB}GB"
+            f"Not enough RAM available: need {request.ram_gb}GB, only {avail['ram_gb']}GB free"
         )
-    if request.disk_gb > settings.RESOURCE_LIMIT_DISK_GB:
+    if request.disk_gb > avail["disk_gb"]:
         raise ValueError(
-            f"Disk {request.disk_gb}GB exceeds limit {settings.RESOURCE_LIMIT_DISK_GB}GB"
+            f"Not enough disk available: need {request.disk_gb}GB, only {avail['disk_gb']}GB free"
         )
 
     # ------------------------------------------------------------------
@@ -457,3 +487,430 @@ async def _refund_points(discord_id: str, amount: int, db: AsyncIOMotorDatabase)
             "created_at": datetime.now(timezone.utc),
         }
     )
+
+
+# ---------------------------------------------------------------------------
+# Bulk creation helpers
+# ---------------------------------------------------------------------------
+
+
+async def _emit_prep(queue: asyncio.Queue | None, step: str, status: str) -> None:
+    if queue is not None:
+        await queue.put({"type": "prep_step", "step": step, "status": status})
+
+
+async def _emit_vm_step(queue: asyncio.Queue | None, vm_index: int, step: str, status: str) -> None:
+    if queue is not None:
+        await queue.put({"type": "vm_step", "vm_index": vm_index, "step": step, "status": status})
+
+
+async def _poll_vm_stopped(
+    vmid: int,
+    timeout_seconds: int = 120,
+    poll_interval: float = 3.0,
+) -> None:
+    elapsed = 0.0
+    while elapsed < timeout_seconds:
+        await asyncio.sleep(poll_interval)
+        elapsed += poll_interval
+        status_data = await pve_client.get_vm_status(vmid)
+        if status_data and status_data.get("status") == "stopped":
+            return
+    raise PVEError(f"VM {vmid} did not stop after {timeout_seconds}s")
+
+
+async def get_multiple_available_ips(count: int, db: AsyncIOMotorDatabase) -> list[str]:
+    """Return `count` available IPs from the pool without overlap."""
+    network = ipaddress.ip_network(settings.VM_IP_RANGE, strict=False)
+    gateway = ipaddress.ip_address(settings.VM_GATEWAY)
+
+    used_cursor = db.vms.find(
+        {"status": {"$in": ["provisioning", "running"]}, "ip_address": {"$exists": True}},
+        {"ip_address": 1},
+    )
+    used_ips: set = set()
+    async for doc in used_cursor:
+        try:
+            used_ips.add(ipaddress.ip_address(doc["ip_address"]))
+        except ValueError:
+            pass
+
+    reserved = {network.network_address, network.broadcast_address, gateway}
+    available: list[str] = []
+    for host in network.hosts():
+        if host in reserved or host in used_ips:
+            continue
+        available.append(str(host))
+        if len(available) == count:
+            break
+
+    if len(available) < count:
+        raise ValueError(f"Not enough available IPs (need {count}, found {len(available)})")
+    return available
+
+
+async def _provision_vm_from_template(
+    vm_index: int,
+    template_vmid: int,
+    password: str,
+    vmid: int,
+    vm_doc_id: ObjectId,
+    ip_address: str,
+    vm_name: str,
+    expires_at: datetime,
+    single_cost: int,
+    request: BulkVMCreateRequest,
+    db: AsyncIOMotorDatabase,
+    prefix_len: int,
+    progress: asyncio.Queue | None = None,
+) -> VMCreateResponse:
+    """Provision a single VM from a pre-determined template as part of a bulk operation."""
+    pve_vm_created = False
+    try:
+        # Clone template
+        await _emit_vm_step(progress, vm_index, "clone", "loading")
+        clone_upid = await pve_client.clone_vm(
+            template_vmid=template_vmid,
+            newid=vmid,
+            name=vm_name,
+            storage=settings.VM_STORAGE,
+            target=settings.PVE_NODE,
+        )
+        await pve_client.poll_task(clone_upid, timeout_seconds=600)
+        pve_vm_created = True
+        await _emit_vm_step(progress, vm_index, "clone", "done")
+
+        # Configure storage, CPU, RAM, disk, cloud-init
+        await _emit_vm_step(progress, vm_index, "configure", "loading")
+        vm_cfg = await pve_client.get_vm_config(vmid)
+        sata0_val = vm_cfg.get("sata0", "")
+        disk_storage = sata0_val.split(":")[0] if ":" in sata0_val else ""
+        if disk_storage != settings.VM_STORAGE:
+            move_upid = await pve_client.move_disk(vmid, "sata0", settings.VM_STORAGE)
+            await pve_client.poll_task(move_upid, timeout_seconds=600)
+
+        await pve_client.update_vm_config(
+            vmid,
+            cpu="host",
+            cores=request.cpu_cores,
+            memory=request.ram_gb * 1024,
+        )
+        await pve_client.resize_disk(vmid, "sata0", f"{request.disk_gb}G")
+        await pve_client.update_vm_config(
+            vmid,
+            cipassword=password,
+            ipconfig0=f"ip={ip_address}/{prefix_len},gw={settings.VM_GATEWAY}",
+            nameserver=settings.VM_DNS,
+            ciupgrade=0,
+        )
+        await _emit_vm_step(progress, vm_index, "configure", "done")
+
+        # Start VM
+        await _emit_vm_step(progress, vm_index, "start", "loading")
+        await pve_client.start_vm(vmid)
+        await _poll_vm_running(vmid, timeout_seconds=180)
+        await _emit_vm_step(progress, vm_index, "start", "done")
+
+    except Exception as exc:
+        logger.error("Bulk VM index=%d vmid=%d failed: %s", vm_index, vmid, exc)
+        if pve_vm_created:
+            try:
+                await pve_client.stop_vm(vmid)
+            except Exception:
+                pass
+            try:
+                del_upid = await pve_client.delete_vm(vmid)
+                await pve_client.poll_task(del_upid, timeout_seconds=120)
+            except Exception:
+                pass
+        await db.vms.update_one(
+            {"_id": vm_doc_id},
+            {"$set": {"status": "error", "error": str(exc)}},
+        )
+        if progress is not None:
+            await progress.put({"type": "vm_error", "vm_index": vm_index, "message": str(exc)})
+        raise ValueError(f"VM {vm_index + 1} failed: {exc}") from exc
+
+    # Finalize DB record
+    await db.vms.update_one(
+        {"_id": vm_doc_id},
+        {
+            "$set": {
+                "status": "running",
+                "started_at": datetime.now(timezone.utc),
+                "password_hash": _hash_password(password),
+            }
+        },
+    )
+
+    result = VMCreateResponse(
+        vm_id=str(vm_doc_id),
+        vmid=vmid,
+        ip_address=ip_address,
+        username="root",
+        password=password,
+        expires_at=expires_at,
+        points_charged=single_cost,
+    )
+
+    if progress is not None:
+        await progress.put({
+            "type": "vm_done",
+            "vm_index": vm_index,
+            "credentials": {
+                "vm_id": result.vm_id,
+                "ip_address": result.ip_address,
+                "username": result.username,
+                "password": result.password,
+                "expires_at": result.expires_at.isoformat(),
+            },
+        })
+
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Bulk creation main flow
+# ---------------------------------------------------------------------------
+
+
+async def bulk_create_vms(
+    request: BulkVMCreateRequest,
+    current_user: dict,
+    db: AsyncIOMotorDatabase,
+    progress: asyncio.Queue | None = None,
+) -> list[VMCreateResponse]:
+    """Bulk VM creation: optional template prep, then N concurrent provisions."""
+    discord_id = current_user["discord_id"]
+    temp_template_vmid: int | None = None
+
+    # ------------------------------------------------------------------
+    # Template preparation (if using user's own VM as source)
+    # ------------------------------------------------------------------
+    if request.source_vmid is not None:
+        vm_doc = await db.vms.find_one({
+            "vmid": request.source_vmid,
+            "user_id": discord_id,
+            "status": {"$in": ["running", "provisioning"]},
+        })
+        if vm_doc is None:
+            raise ValueError(f"VM vmid={request.source_vmid} not found or not owned by you")
+
+        source_vmid = request.source_vmid
+
+        # Stop source VM
+        await _emit_prep(progress, "stop_source", "loading")
+        try:
+            await pve_client.stop_vm(source_vmid)
+            await _poll_vm_stopped(source_vmid, timeout_seconds=120)
+        except Exception as exc:
+            await _emit_prep(progress, "stop_source", "error")
+            raise ValueError(f"Failed to stop source VM: {exc}") from exc
+        await _emit_prep(progress, "stop_source", "done")
+
+        # Clone source VM to temporary template VM
+        await _emit_prep(progress, "clone_template", "loading")
+        try:
+            temp_vmid = await pve_client.select_free_vmid()
+            temp_name = f"bulk-tpl-{discord_id[:8]}-{temp_vmid}"
+            clone_upid = await pve_client.clone_vm(
+                template_vmid=source_vmid,
+                newid=temp_vmid,
+                name=temp_name,
+                storage=settings.VM_STORAGE,
+                target=settings.PVE_NODE,
+            )
+            await pve_client.poll_task(clone_upid, timeout_seconds=300)
+            temp_template_vmid = temp_vmid
+        except Exception as exc:
+            await _emit_prep(progress, "clone_template", "error")
+            try:
+                await pve_client.start_vm(source_vmid)
+            except Exception:
+                pass
+            raise ValueError(f"Failed to clone source VM: {exc}") from exc
+        await _emit_prep(progress, "clone_template", "done")
+
+        # Convert clone to template
+        await _emit_prep(progress, "convert_template", "loading")
+        try:
+            await pve_client.convert_to_template(temp_template_vmid)
+        except Exception as exc:
+            await _emit_prep(progress, "convert_template", "error")
+            try:
+                await pve_client.start_vm(source_vmid)
+            except Exception:
+                pass
+            try:
+                del_upid = await pve_client.delete_vm(temp_template_vmid)
+                await pve_client.poll_task(del_upid, timeout_seconds=120)
+            except Exception:
+                pass
+            raise ValueError(f"Failed to convert clone to template: {exc}") from exc
+        await _emit_prep(progress, "convert_template", "done")
+
+        # Start source VM back
+        await _emit_prep(progress, "start_source", "loading")
+        try:
+            await pve_client.start_vm(source_vmid)
+        except Exception as exc:
+            logger.warning("Failed to restart source VM %s: %s", source_vmid, exc)
+        await _emit_prep(progress, "start_source", "done")
+
+        template_vmid = temp_template_vmid
+    else:
+        template_vmid = settings.get_template_vmid(request.os)
+        if template_vmid is None or template_vmid == 0:
+            raise ValueError(f"OS '{request.os}' is not supported or template not configured")
+
+    # ------------------------------------------------------------------
+    # Available resource checks (total needed for all N VMs)
+    # ------------------------------------------------------------------
+    avail = await _get_available_resources(db)
+    needed_cpu  = request.cpu_cores * request.count
+    needed_ram  = request.ram_gb    * request.count
+    needed_disk = request.disk_gb   * request.count
+    if needed_cpu > avail["cpu"]:
+        raise ValueError(
+            f"Not enough CPU: need {needed_cpu} cores ({request.count}×{request.cpu_cores}), only {avail['cpu']} free"
+        )
+    if needed_ram > avail["ram_gb"]:
+        raise ValueError(
+            f"Not enough RAM: need {needed_ram}GB ({request.count}×{request.ram_gb}GB), only {avail['ram_gb']}GB free"
+        )
+    if needed_disk > avail["disk_gb"]:
+        raise ValueError(
+            f"Not enough disk: need {needed_disk}GB ({request.count}×{request.disk_gb}GB), only {avail['disk_gb']}GB free"
+        )
+
+    # ------------------------------------------------------------------
+    # Cost and point deduction
+    # ------------------------------------------------------------------
+    single_cost = calculate_cost(request.cpu_cores, request.ram_gb, request.disk_gb, False, request.duration_hours)
+    total_cost = single_cost * request.count
+
+    updated_user = await db.users.find_one_and_update(
+        {"discord_id": discord_id, "points": {"$gte": total_cost}},
+        {"$inc": {"points": -total_cost}},
+        return_document=ReturnDocument.AFTER,
+    )
+    if updated_user is None:
+        if temp_template_vmid is not None:
+            try:
+                del_upid = await pve_client.delete_vm(temp_template_vmid)
+                await pve_client.poll_task(del_upid, timeout_seconds=120)
+            except Exception:
+                pass
+        raise ValueError(f"Insufficient points: need {total_cost}")
+
+    # ------------------------------------------------------------------
+    # Pre-allocate IPs and VMIDs to avoid concurrent collisions
+    # ------------------------------------------------------------------
+    try:
+        ip_addresses = await get_multiple_available_ips(request.count, db)
+        existing_vms = await pve_client.list_vms()
+        used_vmids = {int(vm["vmid"]) for vm in existing_vms}
+        if temp_template_vmid is not None:
+            used_vmids.add(temp_template_vmid)
+        candidates = [v for v in range(settings.VM_VMID_MIN, settings.VM_VMID_MAX + 1) if v not in used_vmids]
+        if len(candidates) < request.count:
+            raise ValueError(f"Not enough free VMIDs (need {request.count})")
+        random.shuffle(candidates)
+        vmids = candidates[:request.count]
+    except Exception as exc:
+        await _refund_points(discord_id, total_cost, db)
+        if temp_template_vmid is not None:
+            try:
+                del_upid = await pve_client.delete_vm(temp_template_vmid)
+                await pve_client.poll_task(del_upid, timeout_seconds=120)
+            except Exception:
+                pass
+        raise ValueError(str(exc)) from exc
+
+    # ------------------------------------------------------------------
+    # Prepare passwords and insert VM documents
+    # ------------------------------------------------------------------
+    if request.password_mode == "unified" and request.unified_password:
+        passwords = [request.unified_password] * request.count
+    else:
+        passwords = [_generate_password() for _ in range(request.count)]
+
+    now = datetime.now(timezone.utc)
+    expires_at = now + timedelta(hours=request.duration_hours)
+    prefix_len = ipaddress.ip_network(settings.VM_IP_RANGE, strict=False).prefixlen
+    bulk_id = str(uuid.uuid4())
+    vm_doc_ids: list[ObjectId] = []
+
+    for i in range(request.count):
+        vm_name = f"vm-{discord_id[:8]}-{vmids[i]}"
+        vm_doc = {
+            "vmid": vmids[i],
+            "user_id": discord_id,
+            "os": request.os,
+            "cpu_cores": request.cpu_cores,
+            "ram_gb": request.ram_gb,
+            "disk_gb": request.disk_gb,
+            "gpu_id": None,
+            "gpu_pci_id": None,
+            "ip_address": ip_addresses[i],
+            "username": "root",
+            "status": "provisioning",
+            "created_at": now,
+            "expires_at": expires_at,
+            "points_charged": single_cost,
+            "name": vm_name,
+            "bulk_id": bulk_id,
+        }
+        result = await db.vms.insert_one(vm_doc)
+        vm_doc_ids.append(result.inserted_id)
+
+    await db.transactions.insert_one({
+        "user_id": discord_id,
+        "type": "debit",
+        "amount": total_cost,
+        "description": f"Bulk create: {request.count}x {request.os}, {request.duration_hours}h",
+        "reference_id": None,
+        "created_at": now,
+    })
+
+    # ------------------------------------------------------------------
+    # Provision all VMs concurrently
+    # ------------------------------------------------------------------
+    tasks = [
+        _provision_vm_from_template(
+            vm_index=i,
+            template_vmid=template_vmid,
+            password=passwords[i],
+            vmid=vmids[i],
+            vm_doc_id=vm_doc_ids[i],
+            ip_address=ip_addresses[i],
+            vm_name=f"vm-{discord_id[:8]}-{vmids[i]}",
+            expires_at=expires_at,
+            single_cost=single_cost,
+            request=request,
+            db=db,
+            prefix_len=prefix_len,
+            progress=progress,
+        )
+        for i in range(request.count)
+    ]
+    results_raw = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # ------------------------------------------------------------------
+    # Cleanup temp template
+    # ------------------------------------------------------------------
+    if temp_template_vmid is not None:
+        try:
+            del_upid = await pve_client.delete_vm(temp_template_vmid)
+            await pve_client.poll_task(del_upid, timeout_seconds=120)
+        except Exception as exc:
+            logger.warning("Failed to cleanup temp template vmid=%s: %s", temp_template_vmid, exc)
+
+    # ------------------------------------------------------------------
+    # Refund for failed VMs
+    # ------------------------------------------------------------------
+    failed_count = sum(1 for r in results_raw if isinstance(r, Exception))
+    if failed_count > 0:
+        await _refund_points(discord_id, single_cost * failed_count, db)
+
+    return [r for r in results_raw if isinstance(r, VMCreateResponse)]

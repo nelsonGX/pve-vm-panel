@@ -142,6 +142,10 @@ class PVEClient:
         )
         return str(data)
 
+    async def convert_to_template(self, vmid: int) -> None:
+        """Convert a VM into a Proxmox template (in-place, non-reversible)."""
+        await self._post(f"/nodes/{self._node}/qemu/{vmid}/template")
+
     # ------------------------------------------------------------------ #
     # Task polling
     # ------------------------------------------------------------------ #
