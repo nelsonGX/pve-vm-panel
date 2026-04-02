@@ -25,24 +25,27 @@ interface PButtonProps {
 	fullWidth?: boolean;
 }
 
-export default function PButton({
-	children,
-	onClick,
-	type = 'button',
-	disabled = false,
-	variant = 'primary',
-	minWidth,
-	className = '',
-	disableFixedPaddingX = false,
-	disableFixedPaddingY = false,
-	spinnerAfterClick = false,
-	disableAfterClick = false,
-	spinnerColor = 'bg-white',
-	spinnerTimeout = 10000,
-	loading = false,
-	customInnerClass = "py-2",
-	fullWidth = false,
-}: PButtonProps) {
+const OUTER_CLIP_PATH = 'polygon(0 4px, 4px 4px, 4px 0, calc(100% - 4px) 0, calc(100% - 4px) 8px, 100% 8px, 100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%, 8px 100%, 8px calc(100% - 4px), 0 calc(100% - 4px))';
+const INNER_CLIP_PATH = 'polygon(0 4px, 4px 4px, 4px 0, calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px), 0 calc(100% - 4px))';
+
+export default function PButton(props: PButtonProps) {
+	const {
+		children,
+		onClick,
+		type = 'button',
+		disabled = false,
+		variant = 'primary',
+		minWidth,
+		className = '',
+		spinnerAfterClick = false,
+		disableAfterClick = false,
+		spinnerColor = 'bg-white',
+		spinnerTimeout = 10000,
+		loading = false,
+		customInnerClass = "py-2",
+		fullWidth = false,
+	} = props;
+
 	const [isClicked, setIsClicked] = useState(false);
 	const [temporarilyDisabled, setTemporarilyDisabled] = useState(false);
 
@@ -51,25 +54,27 @@ export default function PButton({
 
 	const getClasses = () => {
 		const baseClasses = [
-			'border-b-4 hover:border-b-6 border-r-4 hover:border-r-6',
-			'active:border-b-3 active:border-r-3',
-			`transition-all duration-75 ease-in ${fullWidth ? 'w-full' : 'max-w-fit max-h-fit'}`,
-			!disableFixedPaddingY && 'hover:-translate-y-0.5 hover:-mb-0.5 active:translate-y-0.5 active:mb-0.5',
-			!disableFixedPaddingX && 'hover:mr-[13.9px] hover:-translate-x-0.5 active:mr-4 active:translate-x-0.5'
+			'group relative inline-block border-0 bg-transparent p-0 text-left align-top',
+			'transition-opacity duration-75 ease-in',
+			fullWidth ? 'w-full' : 'max-w-fit max-h-fit'
 		].filter(Boolean).join(' ');
 		const disabledClasses = isButtonDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer';
-		
+
+		return `${baseClasses} ${disabledClasses}`;
+	};
+
+	const getShadowClasses = () => {
 		switch (variant) {
 			case 'primary':
-				return `${baseClasses} border-blue-500 bg-blue-500 ${disabledClasses}`;
+				return 'bg-blue-500';
 			case 'secondary':
-				return `${baseClasses} border-zinc-500 bg-zinc-500 ${disabledClasses}`;
+				return 'bg-zinc-500';
 			case 'danger':
-				return `${baseClasses} border-red-500 bg-red-500 ${disabledClasses}`;
+				return 'bg-red-500';
 			case 'gray':
-				return `${baseClasses} border-zinc-700 bg-zinc-700 ${disabledClasses}`;
+				return 'bg-zinc-700';
 			default:
-				return `${baseClasses} border-zinc-500 bg-zinc-500 ${disabledClasses}`;
+				return 'bg-zinc-500';
 		}
 	};
 
@@ -114,17 +119,35 @@ export default function PButton({
 			disabled={isButtonDisabled}
 			className={`${getClasses()} ${className}`}
 			style={{
-				clipPath: 'polygon(0 4px, 4px 4px, 4px 0, calc(100% - 4px) 0, calc(100% - 4px) 8px, 100% 8px, 100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%, 8px 100%, 8px calc(100% - 4px), 0 calc(100% - 4px))',
 				minWidth: minWidth
 			}}
 		>
-			<div className={`border-4 ${getBorderClasses()} bg-zinc-900/85`}
-				style={{
-					clipPath: 'polygon(0 4px, 4px 4px, 4px 0, calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px), 0 calc(100% - 4px))'
-				}}
-			>
-				<div className={`${customInnerClass} px-4 flex space-x-2 items-center justify-center`}>
-					{shouldShowSpinner && <PixelSpinner color={spinnerColor} />}<span>{children}</span>
+			<div className={`relative ${fullWidth ? 'w-full' : 'max-w-fit max-h-fit'} pr-1.5 pb-1.5`}>
+				<div
+					aria-hidden="true"
+					className={`absolute inset-0 ${getShadowClasses()}`}
+					style={{
+						clipPath: OUTER_CLIP_PATH,
+					}}
+				/>
+				<div
+					className={[
+						'relative z-10 transition-transform duration-75 ease-in',
+						'translate-x-0.5 translate-y-0.5',
+						!isButtonDisabled && 'group-hover:translate-x-0 group-hover:translate-y-0 group-active:translate-x-0.75 group-active:translate-y-0.75',
+						fullWidth && 'w-full'
+					].filter(Boolean).join(' ')}
+				>
+					<div
+						className={`border-4 ${getBorderClasses()} bg-zinc-900/85 ${fullWidth ? 'w-full' : ''}`}
+						style={{
+							clipPath: INNER_CLIP_PATH
+						}}
+					>
+						<div className={`${customInnerClass} px-4 flex space-x-2 items-center justify-center`}>
+							{shouldShowSpinner && <PixelSpinner color={spinnerColor} />}<span>{children}</span>
+						</div>
+					</div>
 				</div>
 			</div>
 		</button>

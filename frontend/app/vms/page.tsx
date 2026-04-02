@@ -257,6 +257,7 @@ export default function VMsPage() {
         title="Delete VM"
         message="Are you sure you want to delete this VM? This action cannot be undone."
         confirmLabel={deleting ? 'Deleting...' : 'Delete'}
+        confirmLoading={deleting}
         danger
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}

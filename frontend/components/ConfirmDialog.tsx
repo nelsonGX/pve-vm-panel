@@ -10,6 +10,7 @@ interface ConfirmDialogProps {
   message: string
   onConfirm: () => void
   onCancel: () => void
+  confirmLoading?: boolean
   confirmLabel?: string
   danger?: boolean
 }
@@ -20,6 +21,7 @@ export default function ConfirmDialog({
   message,
   onConfirm,
   onCancel,
+  confirmLoading = false,
   confirmLabel = 'Confirm',
   danger = false,
 }: ConfirmDialogProps) {
@@ -55,7 +57,7 @@ export default function ConfirmDialog({
             <PButton variant="secondary" onClick={onCancel}>
               Cancel
             </PButton>
-            <PButton variant={danger ? 'danger' : 'primary'} onClick={onConfirm}>
+            <PButton variant={danger ? 'danger' : 'primary'} onClick={onConfirm} loading={confirmLoading}>
               {confirmLabel}
             </PButton>
           </div>
