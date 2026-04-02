@@ -1,5 +1,7 @@
 import type { Session } from 'next-auth'
 
+const INTERNAL_API_BASE = process.env.INTERNAL_API_BASE ?? 'http://localhost:8124/api/v1'
+
 // ---------------------------------------------------------------------------
 // Server-side fetch helper
 // ---------------------------------------------------------------------------
@@ -18,10 +20,10 @@ export async function apiFetch(
     headers['X-Discord-Id'] = session.user.discordId
   }
 
-  const base = process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
-  const res = await fetch(`${base}/api/v1${path}`, {
+  const res = await fetch(`${INTERNAL_API_BASE}${path}`, {
     ...options,
     headers,
+    cache: 'no-store',
   })
 
   if (!res.ok) {

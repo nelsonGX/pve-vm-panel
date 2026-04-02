@@ -11,6 +11,7 @@ from datetime import datetime, timedelta, timezone
 import bcrypt
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from pymongo.errors import DuplicateKeyError
 from pymongo import ReturnDocument
 
 from config import settings
@@ -171,60 +172,85 @@ async def create_vm(
         if gpu_in_use:
             raise ValueError(f"GPU '{request.gpu_id}' is currently in use")
 
-    # ------------------------------------------------------------------
-    # Pre-flight: IP allocation and VMID selection
-    # ------------------------------------------------------------------
-    ip_address = await get_available_ip(db)
-    if ip_address is None:
-        raise ValueError("No available IP addresses in the pool")
-
     cost = calculate_cost(
         request.cpu_cores, request.ram_gb, request.disk_gb, has_gpu, request.duration_hours
     )
 
-    try:
-        vmid = await pve_client.select_free_vmid()
-    except PVEError as exc:
-        raise ValueError(str(exc)) from exc
-
     # ------------------------------------------------------------------
-    # Step 1: Reserve — deduct points atomically, insert VM document
+    # Step 1: Reserve — deduct points and reserve unique resources atomically
     # ------------------------------------------------------------------
     await _emit(progress, "reserve", "loading")
-    updated_user = await db.users.find_one_and_update(
-        {"discord_id": discord_id, "points": {"$gte": cost}},
-        {"$inc": {"points": -cost}},
-        return_document=ReturnDocument.AFTER,
-    )
-    if updated_user is None:
-        raise ValueError("Insufficient points to create VM")
-
     now = datetime.now(timezone.utc)
     expires_at = now + timedelta(hours=request.duration_hours)
     password = _generate_password()
     username = "root"
-    vm_name = f"vm-{discord_id[:8]}-{vmid}"
     prefix_len = ipaddress.ip_network(settings.VM_IP_RANGE, strict=False).prefixlen
+    updated_user: dict | None = None
+    insert_result = None
+    vm_id: str | None = None
+    vmid: int | None = None
+    ip_address: str | None = None
+    vm_name: str | None = None
 
-    vm_doc = {
-        "vmid": vmid,
-        "user_id": discord_id,
-        "os": request.os,
-        "cpu_cores": request.cpu_cores,
-        "ram_gb": request.ram_gb,
-        "disk_gb": request.disk_gb,
-        "gpu_id": request.gpu_id,
-        "gpu_pci_id": gpu_pci_id,
-        "ip_address": ip_address,
-        "username": username,
-        "status": "provisioning",
-        "created_at": now,
-        "expires_at": expires_at,
-        "points_charged": cost,
-        "name": vm_name,
-    }
-    insert_result = await db.vms.insert_one(vm_doc)
-    vm_id = str(insert_result.inserted_id)
+    for _attempt in range(5):
+        ip_address = await get_available_ip(db)
+        if ip_address is None:
+            raise ValueError("No available IP addresses in the pool")
+
+        try:
+            vmid = await pve_client.select_free_vmid()
+        except PVEError as exc:
+            raise ValueError(str(exc)) from exc
+
+        vm_name = f"vm-{discord_id[:8]}-{vmid}"
+        vm_doc = {
+            "vmid": vmid,
+            "user_id": discord_id,
+            "os": request.os,
+            "cpu_cores": request.cpu_cores,
+            "ram_gb": request.ram_gb,
+            "disk_gb": request.disk_gb,
+            "gpu_id": request.gpu_id,
+            "gpu_pci_id": gpu_pci_id,
+            "ip_address": ip_address,
+            "username": username,
+            "status": "provisioning",
+            "created_at": now,
+            "expires_at": expires_at,
+            "points_charged": cost,
+            "name": vm_name,
+        }
+
+        try:
+            async with await db.client.start_session() as session:
+                async with session.start_transaction():
+                    updated_user = await db.users.find_one_and_update(
+                        {"discord_id": discord_id, "points": {"$gte": cost}},
+                        {"$inc": {"points": -cost}},
+                        return_document=ReturnDocument.AFTER,
+                        session=session,
+                    )
+                    if updated_user is None:
+                        raise ValueError("Insufficient points to create VM")
+
+                    insert_result = await db.vms.insert_one(vm_doc, session=session)
+                    vm_id = str(insert_result.inserted_id)
+            break
+        except DuplicateKeyError:
+            continue
+    else:
+        raise ValueError("Could not reserve VM resources due to concurrent allocations")
+
+    if (
+        insert_result is None
+        or updated_user is None
+        or vm_id is None
+        or vmid is None
+        or ip_address is None
+        or vm_name is None
+    ):
+        raise ValueError("Failed to reserve VM resources")
+
     await _emit(progress, "reserve", "done")
 
     # ------------------------------------------------------------------

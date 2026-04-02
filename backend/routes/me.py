@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from bson import ObjectId
 from fastapi import APIRouter, Depends, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -17,8 +16,15 @@ router = APIRouter(tags=["me"])
 @router.get("/me")
 async def get_me(
     current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
-    return _to_user_response(current_user)
+    active_vm_count = await db.vms.count_documents(
+        {
+            "user_id": current_user["discord_id"],
+            "status": {"$in": ["provisioning", "running"]},
+        }
+    )
+    return _to_user_response(current_user, active_vm_count)
 
 
 # -------------------------------------------------------------------------
@@ -53,12 +59,13 @@ async def get_my_transactions(
 # Helpers
 # -------------------------------------------------------------------------
 
-def _to_user_response(doc: dict) -> dict:
+def _to_user_response(doc: dict, active_vm_count: int) -> dict:
     return {
         "discord_id": doc["discord_id"],
         "discord_username": doc.get("discord_username", ""),
         "discord_avatar": doc.get("discord_avatar"),
         "points": doc.get("points", 0),
+        "active_vm_count": active_vm_count,
         "created_at": doc.get("created_at"),
     }
 

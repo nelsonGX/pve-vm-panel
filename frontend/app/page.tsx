@@ -16,9 +16,9 @@ interface MeData {
   active_vm_count: number
 }
 
-async function getResources(): Promise<ResourcesData | null> {
+async function getResources(session: Awaited<ReturnType<typeof auth>>): Promise<ResourcesData | null> {
   try {
-    return await apiFetch('/resources')
+    return await apiFetch('/resources', {}, session)
   } catch {
     return null
   }
@@ -35,7 +35,9 @@ async function getMe(session: Awaited<ReturnType<typeof auth>>): Promise<MeData 
 
 export default async function HomePage() {
   const session = await auth()
-  const [resources, me] = await Promise.all([getResources(), getMe(session)])
+  const [resources, me] = session
+    ? await Promise.all([getResources(session), getMe(session)])
+    : [null, null]
 
   const gpuUsed = resources ? resources.gpus.filter((g) => !g.available).length : 0
   const gpuTotal = resources ? resources.gpus.length : 0
@@ -49,102 +51,102 @@ export default async function HomePage() {
         </p>
       </div>
 
-      {/* Resource stats */}
-      <section className="animate-fade-in stagger-1 mb-8">
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-500">
-          Cluster Resources
-        </h2>
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/80 p-6 shadow-sm">
-          {resources ? (
-            <div className="flex flex-col gap-5">
-              <ResourceBar
-                label="CPU"
-                used={resources.cpu.total - resources.cpu.available}
-                total={resources.cpu.total}
-                unit="cores"
-              />
-              <ResourceBar
-                label="RAM"
-                used={resources.ram_gb.total - resources.ram_gb.available}
-                total={resources.ram_gb.total}
-                unit="GB"
-              />
-              <ResourceBar
-                label="Disk"
-                used={resources.disk_gb.total - resources.disk_gb.available}
-                total={resources.disk_gb.total}
-                unit="GB"
-              />
-              {gpuTotal > 0 && (
-                <ResourceBar
-                  label="GPU Slots"
-                  used={gpuUsed}
-                  total={gpuTotal}
-                  unit="slots"
-                />
-              )}
-            </div>
-          ) : (
-            <p className="text-sm text-zinc-500">
-              Could not load resource stats.
-            </p>
-          )}
-        </div>
-      </section>
-
-      {/* Resource timeline */}
-      <section className="animate-fade-in stagger-2 mb-8">
-        <ResourceTimeline />
-      </section>
-
       {/* Auth section */}
       {session ? (
-        <section className="animate-fade-in stagger-3">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-500">
+        <>
+          <section className="animate-fade-in stagger-1 mb-8">
+            <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-500">
+              Cluster Resources
+            </h2>
+            <div className="rounded-xl border border-zinc-800 bg-zinc-900/80 p-6 shadow-sm">
+              {resources ? (
+                <div className="flex flex-col gap-5">
+                  <ResourceBar
+                    label="CPU"
+                    used={resources.cpu.total - resources.cpu.available}
+                    total={resources.cpu.total}
+                    unit="cores"
+                  />
+                  <ResourceBar
+                    label="RAM"
+                    used={resources.ram_gb.total - resources.ram_gb.available}
+                    total={resources.ram_gb.total}
+                    unit="GB"
+                  />
+                  <ResourceBar
+                    label="Disk"
+                    used={resources.disk_gb.total - resources.disk_gb.available}
+                    total={resources.disk_gb.total}
+                    unit="GB"
+                  />
+                  {gpuTotal > 0 && (
+                    <ResourceBar
+                      label="GPU Slots"
+                      used={gpuUsed}
+                      total={gpuTotal}
+                      unit="slots"
+                    />
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-zinc-500">
+                  Could not load resource stats.
+                </p>
+              )}
+            </div>
+          </section>
+
+          <section className="animate-fade-in stagger-2 mb-8">
+            <ResourceTimeline />
+          </section>
+
+          <section className="animate-fade-in stagger-3">
+            <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-500">
             Your Account
-          </h2>
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900/80 p-6 shadow-sm">
-            <div className="mb-5 flex flex-wrap items-center gap-8">
-              <div>
-                <p className="text-3xl font-bold text-indigo-300">
-                  {me ? me.points.toLocaleString() : '—'}
-                </p>
-                <p className="mt-0.5 text-xs font-medium uppercase tracking-wider text-zinc-500">Points</p>
+            </h2>
+            <div className="rounded-xl border border-zinc-800 bg-zinc-900/80 p-6 shadow-sm">
+              <div className="mb-5 flex flex-wrap items-center gap-8">
+                <div>
+                  <p className="text-3xl font-bold text-indigo-300">
+                    {me ? me.points.toLocaleString() : '—'}
+                  </p>
+                  <p className="mt-0.5 text-xs font-medium uppercase tracking-wider text-zinc-500">Points</p>
+                </div>
+                <div className="h-10 w-px bg-zinc-800" />
+                <div>
+                  <p className="text-3xl font-bold text-emerald-400">
+                    {me ? me.active_vm_count : '—'}
+                  </p>
+                  <p className="mt-0.5 text-xs font-medium uppercase tracking-wider text-zinc-500">Active VMs</p>
+                </div>
               </div>
-              <div className="h-10 w-px bg-zinc-800" />
-              <div>
-                <p className="text-3xl font-bold text-emerald-400">
-                  {me ? me.active_vm_count : '—'}
-                </p>
-                <p className="mt-0.5 text-xs font-medium uppercase tracking-wider text-zinc-500">Active VMs</p>
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  href="/create"
+                  className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm shadow-indigo-900/40 transition-all duration-150 hover:bg-indigo-500 active:scale-95"
+                >
+                  Create VM
+                </Link>
+                <Link
+                  href="/vms"
+                  className="rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-200 transition-all duration-150 hover:border-zinc-600 hover:bg-zinc-700 active:scale-95"
+                >
+                  My VMs
+                </Link>
+                <Link
+                  href="/redeem"
+                  className="rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-200 transition-all duration-150 hover:border-zinc-600 hover:bg-zinc-700 active:scale-95"
+                >
+                  Redeem Code
+                </Link>
               </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Link
-                href="/create"
-                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm shadow-indigo-900/40 transition-all duration-150 hover:bg-indigo-500 active:scale-95"
-              >
-                Create VM
-              </Link>
-              <Link
-                href="/vms"
-                className="rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-200 transition-all duration-150 hover:border-zinc-600 hover:bg-zinc-700 active:scale-95"
-              >
-                My VMs
-              </Link>
-              <Link
-                href="/redeem"
-                className="rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-200 transition-all duration-150 hover:border-zinc-600 hover:bg-zinc-700 active:scale-95"
-              >
-                Redeem Code
-              </Link>
-            </div>
-          </div>
-        </section>
+          </section>
+        </>
       ) : (
         <section className="animate-fade-in stagger-3 rounded-xl border border-zinc-800 bg-zinc-900/80 p-10 text-center shadow-sm">
           <p className="mb-5 text-zinc-400">
-            Sign in with Discord to start spinning up VMs.
+            Sign in with Discord to view cluster activity and start spinning up VMs.
           </p>
           <Link
             href="/login"

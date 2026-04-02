@@ -59,8 +59,6 @@ const DURATION_OPTIONS = [
   { label: '8h', hours: 8 },
   { label: '12h', hours: 12 },
   { label: '24h', hours: 24 },
-  { label: '36h', hours: 36 },
-  { label: '48h', hours: 48 },
 ]
 
 // ---------------------------------------------------------------------------

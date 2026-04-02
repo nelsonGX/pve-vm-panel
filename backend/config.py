@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from typing import Any
+from urllib.parse import urlparse
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -18,7 +19,7 @@ class Settings(BaseSettings):
     NEXTAUTH_SECRET: str
     NEXTAUTH_URL: str
 
-    INTERNAL_API_SECRET: str = ""
+    INTERNAL_API_SECRET: str
 
     # MongoDB
     MONGODB_URI: str
@@ -118,5 +119,13 @@ class Settings(BaseSettings):
         if not vmid:
             return None
         return vmid
+
+    @property
+    def cors_origins(self) -> list[str]:
+        origins: list[str] = []
+        parsed = urlparse(self.NEXTAUTH_URL)
+        if parsed.scheme and parsed.netloc:
+            origins.append(f"{parsed.scheme}://{parsed.netloc}")
+        return origins
 
 settings = Settings()  # type: ignore[call-arg]

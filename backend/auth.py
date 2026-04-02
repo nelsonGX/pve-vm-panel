@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import secrets
 from datetime import datetime, timezone
 
 from bson import ObjectId
@@ -12,14 +13,15 @@ from database import get_db
 
 
 async def get_current_user(
+    authorization: str | None = Header(default=None),
     x_discord_id: str | None = Header(default=None),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ) -> dict:
-    """Return the user for the Discord ID injected by the Next.js proxy.
+    """Return the authenticated user injected by the trusted Next.js layer."""
+    expected = f"Bearer {settings.INTERNAL_API_SECRET}"
+    if not authorization or not secrets.compare_digest(authorization, expected):
+        raise HTTPException(status_code=401, detail="Invalid internal authentication")
 
-    The proxy calls getToken() server-side and sets X-Discord-Id.
-    FastAPI only listens on localhost so no additional secret is needed.
-    """
     if not x_discord_id:
         raise HTTPException(status_code=401, detail="Not authenticated")
 

@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from auth import get_current_user
 from config import settings
 from database import get_db
 
@@ -12,7 +13,7 @@ router = APIRouter(tags=["resources"])
 
 
 @router.get("/pricing")
-async def get_pricing():
+async def get_pricing(_current_user: dict = Depends(get_current_user)):
     """Return pricing constants for client-side cost calculation."""
     return {
         "price_cpu": settings.PRICE_CPU_CORE_HOUR,
@@ -23,7 +24,10 @@ async def get_pricing():
 
 
 @router.get("/resources")
-async def get_resources(db: AsyncIOMotorDatabase = Depends(get_db)):
+async def get_resources(
+    _current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
     """Return available vs total cluster resources."""
 
     # Aggregate used resources from active VMs
@@ -70,7 +74,10 @@ async def get_resources(db: AsyncIOMotorDatabase = Depends(get_db)):
 
 
 @router.get("/resources/timeline")
-async def get_resources_timeline(db: AsyncIOMotorDatabase = Depends(get_db)):
+async def get_resources_timeline(
+    _current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
     """Return active VMs with user info for timeline visualization."""
     vms = await db.vms.find(
         {"status": {"$in": ["provisioning", "running"]}},
@@ -101,9 +108,12 @@ async def get_resources_timeline(db: AsyncIOMotorDatabase = Depends(get_db)):
         result.append({
             "id": str(vm["_id"]),
             "user": {
-                "discord_id": vm["user_id"],
                 "username": user.get("discord_username") or vm["user_id"],
-                "avatar": user.get("discord_avatar"),
+                "avatar_url": (
+                    f"https://cdn.discordapp.com/avatars/{vm['user_id']}/{user['discord_avatar']}.png?size=32"
+                    if user.get("discord_avatar")
+                    else None
+                ),
             },
             "os": vm["os"],
             "cpu_cores": vm["cpu_cores"],

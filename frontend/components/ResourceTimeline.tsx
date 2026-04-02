@@ -4,9 +4,8 @@ import { useEffect, useState } from 'react'
 import Image from 'next/image'
 
 interface TimelineUser {
-  discord_id: string
   username: string
-  avatar: string | null
+  avatar_url: string | null
 }
 
 interface TimelineVM {
@@ -30,11 +29,6 @@ interface TimelineData {
 const STATUS_COLOR: Record<string, string> = {
   running: 'bg-indigo-500',
   provisioning: 'bg-amber-500',
-}
-
-function avatarUrl(discordId: string, hash: string | null): string | null {
-  if (!hash) return null
-  return `https://cdn.discordapp.com/avatars/${discordId}/${hash}.png?size=32`
 }
 
 function Initials({ name }: { name: string }) {
@@ -162,7 +156,7 @@ export default function ResourceTimeline() {
             const barRight = Math.max(0, Math.min(100, pct(endMs)))
             const barWidth = barRight - barLeft
             const color    = STATUS_COLOR[vm.status] ?? 'bg-zinc-500'
-            const url      = avatarUrl(vm.user.discord_id, vm.user.avatar)
+            const url      = vm.user.avatar_url
             const expires  = new Date(vm.expires_at)
 
             return (

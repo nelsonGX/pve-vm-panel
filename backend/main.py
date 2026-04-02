@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from config import settings
 from database import close_client, create_indexes
 from jobs import setup_scheduler, start_scheduler, stop_scheduler
 from routes.admin import router as admin_router
@@ -47,10 +48,10 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Discord-Id"],
 )
 
 # -------------------------------------------------------------------------
@@ -69,7 +70,5 @@ app.include_router(admin_router)
 @app.get("/health", tags=["health"])
 async def health_check():
     return {"status": "ok"}
-
-
 
 

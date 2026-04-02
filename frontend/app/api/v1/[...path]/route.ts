@@ -2,15 +2,13 @@ import { getToken } from 'next-auth/jwt'
 import { NextRequest, NextResponse } from 'next/server'
 
 const FASTAPI_BASE = 'http://localhost:8124/api/v1'
-const COOKIE_NAME = 'authjs.session-token'
 const SECRET = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? ''
+const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET ?? ''
 
 async function proxy(req: NextRequest): Promise<NextResponse> {
   const token = await getToken({
     req,
     secret: SECRET,
-    cookieName: COOKIE_NAME,
-    salt: COOKIE_NAME,
   })
 
   const url = new URL(req.url)
@@ -19,6 +17,7 @@ async function proxy(req: NextRequest): Promise<NextResponse> {
 
   const headers: Record<string, string> = {
     'Content-Type': req.headers.get('Content-Type') ?? 'application/json',
+    'Authorization': `Bearer ${INTERNAL_API_SECRET}`,
   }
 
   const discordId = token?.discordId as string | undefined
