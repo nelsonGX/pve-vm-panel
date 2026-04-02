@@ -52,10 +52,17 @@ function formatDate(date: Date): string {
   return date.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + formatTime(date)
 }
 
+interface TooltipState {
+  vm: TimelineVM
+  anchorX: number
+  anchorY: number
+}
+
 export default function ResourceTimeline() {
   const [data, setData] = useState<TimelineData | null>(null)
   const [loading, setLoading] = useState(true)
   const [now, setNow] = useState(() => new Date())
+  const [tooltip, setTooltip] = useState<TooltipState | null>(null)
 
   async function fetchData() {
     setLoading(true)
@@ -163,8 +170,18 @@ export default function ResourceTimeline() {
             const url      = vm.user.avatar_url
             const expires  = new Date(vm.expires_at)
 
+            const isHovered = tooltip?.vm.id === vm.id
+
             return (
-              <div key={vm.id} className="flex items-center gap-3">
+              <div
+                key={vm.id}
+                className={`flex items-center gap-3 rounded px-1 py-0.5 transition-colors duration-100 ${isHovered ? 'bg-zinc-800/60' : ''}`}
+                onMouseEnter={(e) => {
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                  setTooltip({ vm, anchorX: rect.left + 200, anchorY: rect.top })
+                }}
+                onMouseLeave={() => setTooltip(null)}
+              >
                 {/* Left: user + spec info */}
                 <div className="flex w-48 shrink-0 items-center gap-2 overflow-hidden">
                   {url ? (
@@ -173,7 +190,7 @@ export default function ResourceTimeline() {
                       alt={vm.user.username}
                       width={32}
                       height={32}
-                      className="border-2 border-zinc-300"
+                      className={`border-2 transition-colors duration-100 ${isHovered ? 'border-zinc-100' : 'border-zinc-300'}`}
                       unoptimized
                       draggable={false}
                     />
@@ -181,7 +198,7 @@ export default function ResourceTimeline() {
                     <Initials name={vm.user.username} />
                   )}
                   <div className="min-w-0">
-                    <p className="truncate text-md font-medium text-zinc-300">
+                    <p className={`truncate text-md font-medium transition-colors duration-100 ${isHovered ? 'text-zinc-100' : 'text-zinc-300'}`}>
                       {vm.user.username}
                     </p>
                     <p className="truncate text-sm text-zinc-400 flex items-center space-x-1">
@@ -217,9 +234,8 @@ export default function ResourceTimeline() {
                   {/* VM duration bar */}
                   {barWidth > 0 && (
                     <div
-                      className={`absolute top-1.5 bottom-1.5 ${color} opacity-75 transition-all`}
+                      className={`absolute top-1 bottom-1 ${color} transition-all duration-100 ${isHovered ? 'opacity-100' : 'opacity-60'}`}
                       style={{ left: `${barLeft}%`, width: `${barWidth}%` }}
-                      title={`${vm.user.username} — expires ${formatDate(expires)}`}
                     />
                   )}
                 </div>
@@ -227,6 +243,36 @@ export default function ResourceTimeline() {
             )
           })}
         </div>
+
+        {/* Fixed tooltip anchored to hovered row — escapes clipPath */}
+        {tooltip && (() => {
+          const { vm: tvm, anchorX, anchorY } = tooltip
+          const texpires = new Date(tvm.expires_at)
+          return (
+            <div
+              className="pointer-events-none fixed z-[9999] w-56 border border-zinc-700 bg-zinc-900 p-3 text-xs shadow-xl -translate-y-full"
+              style={{ left: anchorX, top: anchorY - 6 }}
+            >
+              <p className="mb-1 font-semibold text-zinc-100">{tvm.user.username}</p>
+              <p className="mb-2 text-zinc-400">
+                {tvm.os} ·{' '}
+                <span className={tvm.status === 'running' ? 'text-blue-400' : 'text-amber-400'}>
+                  {tvm.status}
+                </span>
+              </p>
+              <div className="space-y-1 text-zinc-400">
+                <div className="flex items-center gap-1"><Cpu size={11} /><span>{tvm.cpu_cores} cores</span></div>
+                <div className="flex items-center gap-1"><MemoryStick size={11} /><span>{tvm.ram_gb} GB RAM</span></div>
+                <div className="flex items-center gap-1"><HardDrive size={11} /><span>{tvm.disk_gb} GB disk</span></div>
+                {tvm.has_gpu && <p className="text-purple-400">GPU attached</p>}
+              </div>
+              <div className="mt-2 space-y-1 border-t border-zinc-700 pt-2 text-zinc-400">
+                {tvm.started_at && <p>Started: <span className="text-zinc-300">{formatDate(new Date(tvm.started_at))}</span></p>}
+                <p>Expires: <span className="text-zinc-300">{formatDate(texpires)}</span></p>
+              </div>
+            </div>
+          )
+        })()}
 
         {/* Legend */}
         <div className="mt-3 ml-48 flex flex-wrap items-center gap-4">
