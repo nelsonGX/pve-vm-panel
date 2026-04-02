@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, Suspense } from 'react'
+import { useEffect, useState, useCallback, Suspense, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { clientApiFetch } from '@/lib/api'
@@ -20,6 +20,7 @@ import PDiv from '@/components/baseui/pdiv'
 import PInput from '@/components/baseui/pinput'
 import PToggleButton from '@/components/baseui/ptogglebutton'
 import PixelSpinner from '@/components/baseui/spinner'
+import { toast } from '@/components/baseui/toast-manager'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -202,6 +203,12 @@ function CreatePageContent() {
   const [bulkCredentials, setBulkCredentials] = useState<BulkCredential[]>([])
   const [bulkErrors, setBulkErrors] = useState<{ vm_index: number; message: string }[]>([])
   const [bulkFatalError, setBulkFatalError] = useState<string | null>(null)
+  const warningToastStateRef = useRef({
+    cpuHigh: false,
+    ramHigh: false,
+    diskHigh: false,
+    sourceSelected: false,
+  })
 
   // ---------------------------------------------------------------------------
   // Load initial data
@@ -243,7 +250,61 @@ function CreatePageContent() {
     if (status === 'authenticated') loadData()
   }, [status, loadData])
 
-  // Guard
+  // Computed values
+  const maxCpu = resources ? Math.max(1, resources.cpu.available) : 32
+  const maxRam = resources ? Math.max(1, resources.ram_gb.available) : 32
+  const maxDisk = resources ? Math.min(800, Math.max(10, resources.disk_gb.available)) : 800
+  const availableGpus: GpuOption[] =
+    resources?.gpus.filter((g) => g.available).map((g) => ({ id: g.id, name: g.id, available: true })) ?? []
+  const gpuAvailable = availableGpus.length > 0
+
+  const singleCost = pricing
+    ? computeCost(cpuCores, ramGb, diskGb, isBulk ? false : hasGpu, durationHours, pricing)
+    : null
+  const cost = isBulk && singleCost !== null ? singleCost * vmCount : singleCost
+
+  const balance = me?.points ?? 0
+  const remaining = cost !== null ? balance - cost : null
+  const canAfford = remaining === null ? false : remaining >= 0
+
+  const cpuPct = resources ? ((resources.cpu.total - resources.cpu.available) / resources.cpu.total) * 100 : 0
+  const ramPct = resources ? ((resources.ram_gb.total - resources.ram_gb.available) / resources.ram_gb.total) * 100 : 0
+  const diskPct = resources ? ((resources.disk_gb.total - resources.disk_gb.available) / resources.disk_gb.total) * 100 : 0
+
+  useEffect(() => {
+    const cpuHigh = cpuPct >= 80
+    if (cpuHigh && !warningToastStateRef.current.cpuHigh) {
+      toast.warning(`Cluster CPU is at ${cpuPct.toFixed(0)}%.`)
+    }
+    warningToastStateRef.current.cpuHigh = cpuHigh
+  }, [cpuPct])
+
+  useEffect(() => {
+    const ramHigh = ramPct >= 80
+    if (ramHigh && !warningToastStateRef.current.ramHigh) {
+      toast.warning(`Cluster RAM is at ${ramPct.toFixed(0)}%.`)
+    }
+    warningToastStateRef.current.ramHigh = ramHigh
+  }, [ramPct])
+
+  useEffect(() => {
+    const diskHigh = diskPct >= 80
+    if (diskHigh && !warningToastStateRef.current.diskHigh) {
+      toast.warning(`Cluster disk is at ${diskPct.toFixed(0)}%.`)
+    }
+    warningToastStateRef.current.diskHigh = diskHigh
+  }, [diskPct])
+
+  useEffect(() => {
+    const sourceSelected = selectedSourceVmid !== null
+    if (sourceSelected && !warningToastStateRef.current.sourceSelected) {
+      toast.warning('Your VM will be temporarily stopped, cloned to a template, then restarted.', {
+        autoClose: false,
+      })
+    }
+    warningToastStateRef.current.sourceSelected = sourceSelected
+  }, [selectedSourceVmid])
+
   if (status === 'loading' || dataLoading) {
     return (
       <div className="flex flex-1 items-center justify-center">
@@ -269,27 +330,6 @@ function CreatePageContent() {
       </div>
     )
   }
-
-  // Computed values
-  const maxCpu = resources ? Math.max(1, resources.cpu.available) : 32
-  const maxRam = resources ? Math.max(1, resources.ram_gb.available) : 32
-  const maxDisk = resources ? Math.min(800, Math.max(10, resources.disk_gb.available)) : 800
-  const availableGpus: GpuOption[] =
-    resources?.gpus.filter((g) => g.available).map((g) => ({ id: g.id, name: g.id, available: true })) ?? []
-  const gpuAvailable = availableGpus.length > 0
-
-  const singleCost = pricing
-    ? computeCost(cpuCores, ramGb, diskGb, isBulk ? false : hasGpu, durationHours, pricing)
-    : null
-  const cost = isBulk && singleCost !== null ? singleCost * vmCount : singleCost
-
-  const balance = me?.points ?? 0
-  const remaining = cost !== null ? balance - cost : null
-  const canAfford = remaining === null ? false : remaining >= 0
-
-  const cpuPct = resources ? ((resources.cpu.total - resources.cpu.available) / resources.cpu.total) * 100 : 0
-  const ramPct = resources ? ((resources.ram_gb.total - resources.ram_gb.available) / resources.ram_gb.total) * 100 : 0
-  const diskPct = resources ? ((resources.disk_gb.total - resources.disk_gb.available) / resources.disk_gb.total) * 100 : 0
 
   // Build visible steps
   const baseSteps = isBulk ? BULK_STEPS : NORMAL_STEPS
@@ -619,11 +659,6 @@ function CreatePageContent() {
                   </div>
                 )}
 
-                {selectedSourceVmid !== null && (
-                  <p className="mt-2 text-xs text-amber-400/80">
-                    Your VM will be temporarily stopped, cloned to a template, then restarted.
-                  </p>
-                )}
               </div>
             )}
           </div>
@@ -658,9 +693,6 @@ function CreatePageContent() {
               </PButton>
               <span className="text-sm text-zinc-500">{maxCpu} available</span>
             </div>
-            {cpuPct >= 80 && (
-              <p className="mt-3 text-xs text-amber-400">Warning: cluster CPU at {cpuPct.toFixed(0)}%</p>
-            )}
           </div>
         )
 
@@ -680,9 +712,6 @@ function CreatePageContent() {
                 </SelectOptionButton>
               ))}
             </div>
-            {ramPct >= 80 && (
-              <p className="mt-3 text-xs text-amber-400">Warning: cluster RAM at {ramPct.toFixed(0)}%</p>
-            )}
           </div>
         )
 
@@ -709,9 +738,6 @@ function CreatePageContent() {
               <span>10 GB</span>
               <span>{maxDisk} GB</span>
             </div>
-            {diskPct >= 80 && (
-              <p className="mt-3 text-xs text-amber-400">Warning: cluster disk at {diskPct.toFixed(0)}%</p>
-            )}
           </div>
         )
 
@@ -1088,14 +1114,11 @@ function CreatePageContent() {
                   </div>
                 </dl>
 
-                <div className="mt-3 flex flex-col gap-1">
-                  {cpuPct >= 80 && <p className="text-xs text-amber-400">Warning: CPU at {cpuPct.toFixed(0)}%</p>}
-                  {ramPct >= 80 && <p className="text-xs text-amber-400">Warning: RAM at {ramPct.toFixed(0)}%</p>}
-                  {diskPct >= 80 && <p className="text-xs text-amber-400">Warning: Disk at {diskPct.toFixed(0)}%</p>}
-                  {!canAfford && cost !== null && (
+                {!canAfford && cost !== null && (
+                  <div className="mt-3">
                     <p className="text-xs text-red-400">Insufficient points.</p>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             </PDiv>
           </div>

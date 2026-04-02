@@ -25,6 +25,54 @@ button {
   to { opacity: 1; transform: scale(1); }
 }
 
+@keyframes toastSlideInRight {
+  0% { opacity: 0; transform: translate3d(28px, 0, 0) scale(0.96); }
+  45% { opacity: 1; transform: translate3d(-4px, 0, 0) scale(1); }
+  70% { transform: translate3d(3px, 0, 0) scale(1); }
+  100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes toastSlideInLeft {
+  0% { opacity: 0; transform: translate3d(-28px, 0, 0) scale(0.96); }
+  45% { opacity: 1; transform: translate3d(4px, 0, 0) scale(1); }
+  70% { transform: translate3d(-3px, 0, 0) scale(1); }
+  100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes toastSlideInDown {
+  0% { opacity: 0; transform: translate3d(0, -20px, 0) scale(0.96); }
+  45% { opacity: 1; transform: translate3d(0, 4px, 0) scale(1); }
+  70% { transform: translate3d(0, -2px, 0) scale(1); }
+  100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes toastSlideInUp {
+  0% { opacity: 0; transform: translate3d(0, 20px, 0) scale(0.96); }
+  45% { opacity: 1; transform: translate3d(0, -4px, 0) scale(1); }
+  70% { transform: translate3d(0, 2px, 0) scale(1); }
+  100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes toastSlideOutRight {
+  0% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+  100% { opacity: 0; transform: translate3d(24px, 0, 0) scale(0.96); }
+}
+
+@keyframes toastSlideOutLeft {
+  0% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+  100% { opacity: 0; transform: translate3d(-24px, 0, 0) scale(0.96); }
+}
+
+@keyframes toastSlideOutDown {
+  0% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+  100% { opacity: 0; transform: translate3d(0, 16px, 0) scale(0.96); }
+}
+
+@keyframes toastSlideOutUp {
+  0% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+  100% { opacity: 0; transform: translate3d(0, -16px, 0) scale(0.96); }
+}
+
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
@@ -40,6 +88,38 @@ button {
 
 .animate-scale-in {
   animation: scaleIn 0.2s ease-out both;
+}
+
+.animate-toast-in-right {
+  animation: toastSlideInRight 0.38s steps(6, end) both;
+}
+
+.animate-toast-in-left {
+  animation: toastSlideInLeft 0.38s steps(6, end) both;
+}
+
+.animate-toast-in-down {
+  animation: toastSlideInDown 0.38s steps(6, end) both;
+}
+
+.animate-toast-in-up {
+  animation: toastSlideInUp 0.38s steps(6, end) both;
+}
+
+.animate-toast-out-right {
+  animation: toastSlideOutRight 0.18s steps(4, end) both;
+}
+
+.animate-toast-out-left {
+  animation: toastSlideOutLeft 0.18s steps(4, end) both;
+}
+
+.animate-toast-out-down {
+  animation: toastSlideOutDown 0.18s steps(4, end) both;
+}
+
+.animate-toast-out-up {
+  animation: toastSlideOutUp 0.18s steps(4, end) both;
 }
 
 .stagger-1 { animation-delay: 0.05s; }

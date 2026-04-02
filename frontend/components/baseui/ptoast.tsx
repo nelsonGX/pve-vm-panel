@@ -3,6 +3,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import Icon from './icon';
 
+const EXIT_ANIMATION_MS = 180;
+
 interface PToastProps {
 	children: React.ReactNode;
 	variant?: 'info' | 'success' | 'warning' | 'error';
@@ -24,28 +26,27 @@ export default function PToast({
 	className = '',
 	isVisible = true
 }: PToastProps) {
-	const [visible, setVisible] = useState(isVisible);
-
-	useEffect(() => {
-		setVisible(isVisible);
-	}, [isVisible]);
+	const [isClosing, setIsClosing] = useState(false);
 
 	const handleClose = useCallback(() => {
-		setVisible(false);
-		if (onClose) {
-			onClose();
-		}
-	}, [onClose]);
+		if (isClosing) return;
+		setIsClosing(true);
+		window.setTimeout(() => {
+			if (onClose) {
+				onClose();
+			}
+		}, EXIT_ANIMATION_MS);
+	}, [isClosing, onClose]);
 
 	useEffect(() => {
-		if (autoClose && visible) {
+		if (autoClose && !isClosing) {
 			const timer = setTimeout(() => {
 				handleClose();
 			}, autoCloseDelay);
 			
 			return () => clearTimeout(timer);
 		}
-	}, [autoClose, autoCloseDelay, visible, handleClose]);
+	}, [autoClose, autoCloseDelay, isClosing, handleClose]);
 
 	const getClasses = () => {
 		const baseClasses = "border-b-4 hover:border-b-6 border-r-4 hover:border-r-6 hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all duration-75 ease-in max-w-fit max-h-fit";
@@ -109,29 +110,27 @@ export default function PToast({
 		}
 	};
 
-	const getPositionClasses = () => {
+	const getAnimationClasses = () => {
 		switch (position) {
 			case 'top-right':
-				return 'fixed top-4 right-4 z-50';
-			case 'top-left':
-				return 'fixed top-4 left-4 z-50';
 			case 'bottom-right':
-				return 'fixed bottom-4 right-4 z-50';
+				return isClosing ? 'animate-toast-out-right' : 'animate-toast-in-right';
+			case 'top-left':
 			case 'bottom-left':
-				return 'fixed bottom-4 left-4 z-50';
+				return isClosing ? 'animate-toast-out-left' : 'animate-toast-in-left';
 			case 'top-center':
-				return 'fixed top-4 left-1/2 transform -translate-x-1/2 z-50';
+				return isClosing ? 'animate-toast-out-up' : 'animate-toast-in-down';
 			case 'bottom-center':
-				return 'fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50';
+				return isClosing ? 'animate-toast-out-down' : 'animate-toast-in-up';
 			default:
-				return 'fixed top-4 right-4 z-50';
+				return isClosing ? 'animate-toast-out-right' : 'animate-toast-in-right';
 		}
 	};
 
-	if (!visible) return null;
+	if (!isVisible) return null;
 
 	return (
-		<div className={`${getPositionClasses()} animate-in slide-in-from-right-5 duration-300`}>
+		<div className={`${getAnimationClasses()} pointer-events-auto`}>
 			<div className={`${getClasses()} ${className}`}
 				style={{
 					clipPath: 'polygon(0 4px, 4px 4px, 4px 0, calc(100% - 4px) 0, calc(100% - 4px) 8px, 100% 8px, 100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%, 8px 100%, 8px calc(100% - 4px), 0 calc(100% - 4px))'

@@ -11,6 +11,7 @@ import PButton from '@/components/baseui/pbutton'
 import PDiv from '@/components/baseui/pdiv'
 import PixelSpinner from '@/components/baseui/spinner'
 import Icon from '@/components/baseui/icon'
+import { toast } from '@/components/baseui/toast-manager'
 
 interface BulkGroupProps {
   bulkId: string
@@ -168,6 +169,18 @@ export default function VMsPage() {
     if (status === 'authenticated') fetchVMs()
   }, [status, fetchVMs])
 
+  useEffect(() => {
+    if (error) {
+      toast.error(error, { autoClose: false })
+    }
+  }, [error])
+
+  useEffect(() => {
+    if (actionError) {
+      toast.warning(actionError, { autoClose: false })
+    }
+  }, [actionError])
+
   if (status === 'loading' || loading) {
     return (
       <div className="flex flex-1 items-center justify-center">
@@ -278,17 +291,6 @@ export default function VMsPage() {
           </Link>
         </div>
       </div>
-
-      {error && (
-        <div className="animate-fade-in mb-4 border border-red-800 bg-red-950/30 px-4 py-3 text-sm text-red-400">
-          {error}
-        </div>
-      )}
-      {actionError && (
-        <div className="animate-fade-in mb-4 border border-amber-800 bg-amber-950/30 px-4 py-3 text-sm text-amber-300">
-          {actionError}
-        </div>
-      )}
 
       {vms.length === 0 ? (
         <PDiv fullWidth padding="p-12" className="animate-fade-in stagger-1">

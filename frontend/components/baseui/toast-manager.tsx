@@ -21,12 +21,33 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
+  const getContainerClasses = (position: NonNullable<Toast['position']>) => {
+    switch (position) {
+      case 'top-right':
+        return 'fixed top-4 right-4 z-50 flex flex-col items-end gap-3 pointer-events-none';
+      case 'top-left':
+        return 'fixed top-4 left-4 z-50 flex flex-col items-start gap-3 pointer-events-none';
+      case 'bottom-right':
+        return 'fixed bottom-4 right-4 z-50 flex flex-col-reverse items-end gap-3 pointer-events-none';
+      case 'bottom-left':
+        return 'fixed bottom-4 left-4 z-50 flex flex-col-reverse items-start gap-3 pointer-events-none';
+      case 'top-center':
+        return 'fixed top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-3 pointer-events-none';
+      case 'bottom-center':
+        return 'fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex flex-col-reverse items-center gap-3 pointer-events-none';
+      default:
+        return 'fixed top-4 right-4 z-50 flex flex-col items-end gap-3 pointer-events-none';
+    }
+  };
+
   const showToast = useCallback((
     message: string, 
     variant: 'info' | 'success' | 'warning' | 'error' = 'info',
     options: Partial<Toast> = {}
   ) => {
-    const id = Date.now().toString();
+    const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const newToast: Toast = {
       id,
       message,
@@ -44,22 +65,40 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setToasts(prev => prev.filter(toast => toast.id !== id));
   }, []);
 
+  const positions: NonNullable<Toast['position']>[] = [
+    'top-right',
+    'top-left',
+    'bottom-right',
+    'bottom-left',
+    'top-center',
+    'bottom-center',
+  ];
+
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      {toasts.map(toast => (
-        <PToast
-          key={toast.id}
-          variant={toast.variant}
-          position={toast.position}
-          autoClose={toast.autoClose}
-          autoCloseDelay={toast.autoCloseDelay}
-          isVisible={true}
-          onClose={() => removeToast(toast.id)}
-        >
-          {toast.message}
-        </PToast>
-      ))}
+      {positions.map((position) => {
+        const positionedToasts = toasts.filter((toast) => (toast.position || 'top-right') === position);
+        if (positionedToasts.length === 0) return null;
+
+        return (
+          <div key={position} className={getContainerClasses(position)}>
+            {positionedToasts.map((toast) => (
+              <PToast
+                key={toast.id}
+                variant={toast.variant}
+                position={toast.position}
+                autoClose={toast.autoClose}
+                autoCloseDelay={toast.autoCloseDelay}
+                isVisible={true}
+                onClose={() => removeToast(toast.id)}
+              >
+                {toast.message}
+              </PToast>
+            ))}
+          </div>
+        );
+      })}
     </ToastContext.Provider>
   );
 };

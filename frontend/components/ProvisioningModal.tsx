@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Check, Circle, Copy, X } from 'lucide-react'
 import PButton from '@/components/baseui/pbutton'
 import PDiv from '@/components/baseui/pdiv'
 import PixelSpinner from '@/components/baseui/spinner'
+import { toast } from '@/components/baseui/toast-manager'
 
 export type StepStatus = 'pending' | 'loading' | 'done' | 'error'
 
@@ -77,6 +78,33 @@ export default function ProvisioningModal({
   error,
   onClose,
 }: ProvisioningModalProps) {
+  const shownErrorRef = useRef<string | null>(null)
+  const shownCredentialsRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!open) {
+      shownErrorRef.current = null
+      shownCredentialsRef.current = null
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (!open || !error || shownErrorRef.current === error) return
+    shownErrorRef.current = error
+    toast.error(error, { autoClose: false })
+  }, [open, error])
+
+  useEffect(() => {
+    const credentialKey = credentials
+      ? `${credentials.ip_address}:${credentials.expires_at}`
+      : null
+    if (!open || !credentialKey || shownCredentialsRef.current === credentialKey) return
+    shownCredentialsRef.current = credentialKey
+    toast.warning("You won't be able to see these credentials again. Copy them somewhere safe.", {
+      autoClose: false,
+    })
+  }, [open, credentials])
+
   if (!open) return null
 
   const hasError = !!error || steps.some((s) => s.status === 'error')
@@ -109,12 +137,6 @@ export default function ProvisioningModal({
             ))}
           </div>
 
-          {error && (
-            <div className="mb-4 border border-red-800 bg-red-950/40 px-4 py-3 text-sm text-red-300">
-              {error}
-            </div>
-          )}
-
           {credentials && (
             <div className="mb-4 border border-emerald-800 bg-emerald-950/30 p-4">
               <p className="mb-3 text-sm font-medium text-emerald-400">
@@ -139,9 +161,6 @@ export default function ProvisioningModal({
                 <div className="flex items-center">
                   <span className="w-24 text-zinc-500">Expires</span>
                   <span className="text-zinc-400">{new Date(credentials.expires_at).toLocaleString()}</span>
-                </div>
-                <div className="mt-3 border border-yellow-700 bg-yellow-900/30 p-3 text-sm text-yellow-300">
-                  Note: You won{"'"}t be able to see these credentials again, so make sure to copy them somewhere safe!
                 </div>
               </div>
             </div>
