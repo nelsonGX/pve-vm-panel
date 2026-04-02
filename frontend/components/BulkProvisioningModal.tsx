@@ -46,16 +46,16 @@ const STEP_ICON: Record<StepStatus, React.ReactNode> = {
   ),
   loading: (
     <span className="flex h-5 w-5 shrink-0 items-center justify-center">
-      <PixelSpinner color="bg-indigo-400" size={5} pixelSize={2} />
+      <PixelSpinner color="bg-white" />
     </span>
   ),
   done: (
-    <span className="flex h-5 w-5 shrink-0 items-center justify-center bg-emerald-900 text-emerald-400">
+    <span className="flex h-5 w-5 shrink-0 items-center justify-center text-emerald-400">
       <Check className="h-3.5 w-3.5" />
     </span>
   ),
   error: (
-    <span className="flex h-5 w-5 shrink-0 items-center justify-center bg-red-900 text-red-400">
+    <span className="flex h-5 w-5 shrink-0 items-center justify-center text-red-400">
       <X className="h-3.5 w-3.5" />
     </span>
   ),

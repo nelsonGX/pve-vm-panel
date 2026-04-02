@@ -117,7 +117,7 @@ function SelectOptionButton({
       disabled={disabled}
       fullWidth
       className={selected ? '' : 'opacity-90'}
-      customInnerClass={`flex w-full items-center justify-center px-4 py-3 text-sm font-medium ${selected ? 'text-indigo-200' : 'text-zinc-300'}`}
+      customInnerClass='pt-2 pb-2.5'
     >
       {children}
     </PButton>
@@ -636,11 +636,10 @@ function CreatePageContent() {
             <div className="flex items-center gap-3">
               <PButton
                 variant="secondary"
-                customInnerClass="py-2"
                 disabled={cpuCores <= 1}
                 onClick={() => setCpuCores((v) => Math.max(1, v - 1))}
               >
-                −
+                -
               </PButton>
               <PInput
                 type="number"
@@ -648,12 +647,10 @@ function CreatePageContent() {
                 onChange={(e) =>
                   setCpuCores(Math.min(maxCpu, Math.max(1, parseInt(e.target.value) || 1)))
                 }
-                minWidth="6rem"
                 className="text-center"
               />
               <PButton
                 variant="secondary"
-                customInnerClass="py-2"
                 disabled={cpuCores >= maxCpu}
                 onClick={() => setCpuCores((v) => Math.min(maxCpu, v + 1))}
               >
@@ -671,7 +668,7 @@ function CreatePageContent() {
         return (
           <div>
             <h2 className="mb-4 text-lg font-semibold text-zinc-100">How much RAM?</h2>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
               {RAM_OPTIONS.map((gb) => (
                 <SelectOptionButton
                   key={gb}

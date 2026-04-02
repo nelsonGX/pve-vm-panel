@@ -42,7 +42,7 @@ export default function PButton(props: PButtonProps) {
 		spinnerColor = 'bg-white',
 		spinnerTimeout = 10000,
 		loading = false,
-		customInnerClass = "py-2",
+		customInnerClass = "pb-1 pt-0.5",
 		fullWidth = false,
 	} = props;
 
@@ -134,6 +134,7 @@ export default function PButton(props: PButtonProps) {
 					className={[
 						'relative z-10 transition-transform duration-75 ease-in',
 						'translate-x-0.5 translate-y-0.5',
+						isButtonDisabled && 'cursor-not-allowed opacity-75',
 						!isButtonDisabled && 'group-hover:translate-x-0 group-hover:translate-y-0 group-active:translate-x-0.75 group-active:translate-y-0.75',
 						fullWidth && 'w-full'
 					].filter(Boolean).join(' ')}
@@ -144,7 +145,7 @@ export default function PButton(props: PButtonProps) {
 							clipPath: INNER_CLIP_PATH
 						}}
 					>
-						<div className={`${customInnerClass} px-4 flex space-x-2 items-center justify-center`}>
+						<div className={`${customInnerClass} px-4 flex space-x-2 items-center justify-center text-lg`}>
 							{shouldShowSpinner && <PixelSpinner color={spinnerColor} />}<span>{children}</span>
 						</div>
 					</div>

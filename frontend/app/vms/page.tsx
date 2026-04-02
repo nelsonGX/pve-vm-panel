@@ -267,6 +267,7 @@ export default function VMsPage() {
         title="Delete Bulk Group"
         message="Delete all active VMs in this bulk group? This cannot be undone."
         confirmLabel={bulkDeleting ? 'Deleting...' : 'Delete All'}
+        confirmLoading={bulkDeleting}
         danger
         onConfirm={handleBulkDelete}
         onCancel={() => setBulkDeleteTarget(null)}

@@ -69,7 +69,6 @@ export default function Header() {
               </div>
               <PButton
                 variant="gray"
-                customInnerClass="py-1"
                 onClick={() => signOut({ callbackUrl: '/' })}
               >
                 Sign out
