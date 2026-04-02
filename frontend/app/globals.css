@@ -3,6 +3,7 @@
 html {
   background-color: rgb(9 9 11); /* zinc-950 */
   color: rgb(244 244 245); /* zinc-100 */
+  font-family: unifont, Arial, Helvetica, sans-serif;
 }
 
 button {
@@ -45,3 +46,13 @@ button {
 .stagger-2 { animation-delay: 0.1s; }
 .stagger-3 { animation-delay: 0.15s; }
 .stagger-4 { animation-delay: 0.2s; }
+
+@font-face {
+  font-family: 'unifont';
+  src: url('/assets/fonts/unifont_jp-16.0.04.otf') format('opentype');
+  font-display: swap;
+}
+
+.font-unifont {
+  font-family: 'unifont', 'Noto Sans TC', monospace;
+}

@@ -18,6 +18,8 @@ export async function apiFetch(
   if (session) {
     headers['Authorization'] = `Bearer ${process.env.INTERNAL_API_SECRET}`
     headers['X-Discord-Id'] = session.user.discordId
+    headers['X-Discord-Username'] = session.user.discordUsername
+    headers['X-Discord-Avatar'] = session.user.avatar ?? ''
   }
 
   const res = await fetch(`${INTERNAL_API_BASE}${path}`, {
