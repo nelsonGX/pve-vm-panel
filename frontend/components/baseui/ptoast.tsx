@@ -1,9 +1,9 @@
 "use client"
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Icon from './icon';
 
-const EXIT_ANIMATION_MS = 180;
+const EXIT_ANIMATION_MS = 400;
 
 interface PToastProps {
 	children: React.ReactNode;
@@ -16,37 +16,35 @@ interface PToastProps {
 	isVisible?: boolean;
 }
 
-export default function PToast({ 
-	children, 
+export default function PToast({
+	children,
 	variant = 'info',
 	onClose,
 	autoClose = true,
-	autoCloseDelay = 5000,
+	autoCloseDelay = 3000,
 	position = 'top-right',
 	className = '',
 	isVisible = true
 }: PToastProps) {
 	const [isClosing, setIsClosing] = useState(false);
+	const isClosingRef = useRef(false);
+	const onCloseRef = useRef(onClose);
+	useEffect(() => { onCloseRef.current = onClose; });
 
 	const handleClose = useCallback(() => {
-		if (isClosing) return;
+		if (isClosingRef.current) return;
+		isClosingRef.current = true;
 		setIsClosing(true);
 		window.setTimeout(() => {
-			if (onClose) {
-				onClose();
-			}
+			onCloseRef.current?.();
 		}, EXIT_ANIMATION_MS);
-	}, [isClosing, onClose]);
+	}, []);
 
 	useEffect(() => {
-		if (autoClose && !isClosing) {
-			const timer = setTimeout(() => {
-				handleClose();
-			}, autoCloseDelay);
-			
-			return () => clearTimeout(timer);
-		}
-	}, [autoClose, autoCloseDelay, isClosing, handleClose]);
+		if (!autoClose) return;
+		const timer = setTimeout(handleClose, autoCloseDelay);
+		return () => clearTimeout(timer);
+	}, [autoClose, autoCloseDelay, handleClose]);
 
 	const getClasses = () => {
 		const baseClasses = "border-b-4 hover:border-b-6 border-r-4 hover:border-r-6 hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all duration-75 ease-in max-w-fit max-h-fit";

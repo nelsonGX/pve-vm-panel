@@ -599,11 +599,16 @@ function CreatePageContent() {
 
   function handleModalClose() {
     setModalOpen(false)
-    if (credentials) router.push('/vms')
+    if (credentials) {
+      toast.success('VM created successfully.')
+      router.push('/vms')
+    }
   }
 
   function handleBulkModalClose() {
     setBulkModalOpen(false)
+    const successCount = bulkCredentials.length
+    if (successCount > 0) toast.success(`${successCount} VM${successCount !== 1 ? 's' : ''} created successfully.`)
     router.push('/vms')
   }
 

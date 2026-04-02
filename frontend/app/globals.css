@@ -26,51 +26,43 @@ button {
 }
 
 @keyframes toastSlideInRight {
-  0% { opacity: 0; transform: translate3d(28px, 0, 0) scale(0.96); }
-  45% { opacity: 1; transform: translate3d(-4px, 0, 0) scale(1); }
-  70% { transform: translate3d(3px, 0, 0) scale(1); }
-  100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+  0% { transform: translate3d(110%, 0, 0); }
+  100% { transform: translate3d(0, 0, 0); }
 }
 
 @keyframes toastSlideInLeft {
-  0% { opacity: 0; transform: translate3d(-28px, 0, 0) scale(0.96); }
-  45% { opacity: 1; transform: translate3d(4px, 0, 0) scale(1); }
-  70% { transform: translate3d(-3px, 0, 0) scale(1); }
-  100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+  0% { transform: translate3d(-110%, 0, 0); }
+  100% { transform: translate3d(0, 0, 0); }
 }
 
 @keyframes toastSlideInDown {
-  0% { opacity: 0; transform: translate3d(0, -20px, 0) scale(0.96); }
-  45% { opacity: 1; transform: translate3d(0, 4px, 0) scale(1); }
-  70% { transform: translate3d(0, -2px, 0) scale(1); }
-  100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+  0% { transform: translate3d(0, -110%, 0); }
+  100% { transform: translate3d(0, 0, 0); }
 }
 
 @keyframes toastSlideInUp {
-  0% { opacity: 0; transform: translate3d(0, 20px, 0) scale(0.96); }
-  45% { opacity: 1; transform: translate3d(0, -4px, 0) scale(1); }
-  70% { transform: translate3d(0, 2px, 0) scale(1); }
-  100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+  0% { transform: translate3d(0, 110%, 0); }
+  100% { transform: translate3d(0, 0, 0); }
 }
 
 @keyframes toastSlideOutRight {
-  0% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
-  100% { opacity: 0; transform: translate3d(24px, 0, 0) scale(0.96); }
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(110%, 0, 0); }
 }
 
 @keyframes toastSlideOutLeft {
-  0% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
-  100% { opacity: 0; transform: translate3d(-24px, 0, 0) scale(0.96); }
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-110%, 0, 0); }
 }
 
 @keyframes toastSlideOutDown {
-  0% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
-  100% { opacity: 0; transform: translate3d(0, 16px, 0) scale(0.96); }
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(0, 110%, 0); }
 }
 
 @keyframes toastSlideOutUp {
-  0% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
-  100% { opacity: 0; transform: translate3d(0, -16px, 0) scale(0.96); }
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(0, -110%, 0); }
 }
 
 @keyframes pulse-dot {
@@ -91,35 +83,35 @@ button {
 }
 
 .animate-toast-in-right {
-  animation: toastSlideInRight 0.38s steps(6, end) both;
+  animation: toastSlideInRight 0.3s steps(8, end) both;
 }
 
 .animate-toast-in-left {
-  animation: toastSlideInLeft 0.38s steps(6, end) both;
+  animation: toastSlideInLeft 0.3s steps(8, end) both;
 }
 
 .animate-toast-in-down {
-  animation: toastSlideInDown 0.38s steps(6, end) both;
+  animation: toastSlideInDown 0.3s steps(8, end) both;
 }
 
 .animate-toast-in-up {
-  animation: toastSlideInUp 0.38s steps(6, end) both;
+  animation: toastSlideInUp 0.3s steps(8, end) both;
 }
 
 .animate-toast-out-right {
-  animation: toastSlideOutRight 0.18s steps(4, end) both;
+  animation: toastSlideOutRight 0.25s steps(8, end) both;
 }
 
 .animate-toast-out-left {
-  animation: toastSlideOutLeft 0.18s steps(4, end) both;
+  animation: toastSlideOutLeft 0.25s steps(8, end) both;
 }
 
 .animate-toast-out-down {
-  animation: toastSlideOutDown 0.18s steps(4, end) both;
+  animation: toastSlideOutDown 0.25s steps(8, end) both;
 }
 
 .animate-toast-out-up {
-  animation: toastSlideOutUp 0.18s steps(4, end) both;
+  animation: toastSlideOutUp 0.25s steps(8, end) both;
 }
 
 .stagger-1 { animation-delay: 0.05s; }

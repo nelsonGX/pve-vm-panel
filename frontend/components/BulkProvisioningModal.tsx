@@ -116,12 +116,12 @@ export default function BulkProvisioningModal({
   onClose,
 }: BulkProvisioningModalProps) {
   const shownFatalErrorRef = useRef<string | null>(null)
-  const shownCredentialsRef = useRef<string | null>(null)
+  const shownCredentialsToastRef = useRef(false)
 
   useEffect(() => {
     if (!open) {
       shownFatalErrorRef.current = null
-      shownCredentialsRef.current = null
+      shownCredentialsToastRef.current = false
     }
   }, [open])
 
@@ -132,19 +132,12 @@ export default function BulkProvisioningModal({
   }, [open, fatalError])
 
   useEffect(() => {
-    const credentialKey =
-      open && credentials.length > 0
-        ? credentials
-            .map((credential) => `${credential.vm_index}:${credential.expires_at}`)
-            .sort()
-            .join('|')
-        : null
-    if (!credentialKey || shownCredentialsRef.current === credentialKey) return
-    shownCredentialsRef.current = credentialKey
+    if (!open || credentials.length === 0 || shownCredentialsToastRef.current) return
+    shownCredentialsToastRef.current = true
     toast.warning("Save these credentials now. You won't be able to see them again.", {
       autoClose: false,
     })
-  }, [open, credentials])
+  }, [open, credentials.length])
 
   if (!open) return null
 

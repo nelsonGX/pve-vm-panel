@@ -331,7 +331,7 @@ function UsersTab() {
                 <td className="px-4 py-2.5 text-zinc-500">{new Date(u.created_at).toLocaleDateString()}</td>
                 <td className="px-4 py-2.5">
                   {adjustTarget === u.discord_id ? (
-                    <form onSubmit={handleAdjust} className="flex flex-col gap-1.5 min-w-[220px]">
+                    <form onSubmit={handleAdjust} className="flex flex-col gap-1.5 min-w-55">
                       <div className="flex gap-1.5">
                         <PInput type="number" value={String(adjustDelta)} onChange={(e) => setAdjustDelta(parseInt(e.target.value) || 0)} placeholder="±points" minWidth="6rem" />
                         <PInput type="text" value={adjustReason} onChange={(e) => setAdjustReason(e.target.value)} placeholder="Reason" minWidth="8rem" />

@@ -150,6 +150,9 @@ export default function VMsPage() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [vmActionLoading, setVmActionLoading] = useState<{ vmId: string; action: VMAction } | null>(null)
   const [bulkActionLoading, setBulkActionLoading] = useState<{ bulkId: string; action: VMAction } | null>(null)
+  const [showActive, setShowActive] = useState(true)
+  const [showStopped, setShowStopped] = useState(true)
+  const [showPast, setShowPast] = useState(false)
 
   const fetchVMs = useCallback(async () => {
     setLoading(true)
@@ -196,10 +199,12 @@ export default function VMsPage() {
 
   async function handleDelete() {
     if (!deleteTarget) return
+    const vm = vms.find((v) => v.id === deleteTarget)
     setDeleting(true)
     try {
       await clientApiFetch(`/vms/${deleteTarget}`, { method: 'DELETE' })
       setVms((prev) => prev.filter((v) => v.id !== deleteTarget))
+      toast.success(vm ? `${vm.name} deleted.` : 'VM deleted.')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete VM')
     } finally {
@@ -210,6 +215,7 @@ export default function VMsPage() {
 
   async function handleBulkDelete() {
     if (!bulkDeleteTarget) return
+    const groupVms = vms.filter((v) => v.bulk_id === bulkDeleteTarget)
     setBulkDeleting(true)
     try {
       await clientApiFetch(`/vms/bulk/${bulkDeleteTarget}`, { method: 'DELETE' })
@@ -219,6 +225,7 @@ export default function VMsPage() {
             (v.status !== 'running' && v.status !== 'provisioning'),
         ),
       )
+      toast.success(`Deleted ${groupVms.length} VMs.`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete bulk VMs')
     } finally {
@@ -230,9 +237,12 @@ export default function VMsPage() {
   async function handleVmAction(vmId: string, action: VMAction) {
     setActionError(null)
     setVmActionLoading({ vmId, action })
+    const vm = vms.find((v) => v.id === vmId)
     try {
       await clientApiFetch(`/vms/${vmId}/${action}`, { method: 'POST' })
       await fetchVMs()
+      const label = action === 'start' ? 'started' : action === 'stop' ? 'stopped' : 'restarted'
+      toast.success(vm ? `${vm.name} ${label}.` : `VM ${label}.`)
     } catch (err) {
       setActionError(err instanceof Error ? err.message : `Failed to ${action} VM`)
     } finally {
@@ -243,9 +253,12 @@ export default function VMsPage() {
   async function handleBulkAction(bulkId: string, action: VMAction) {
     setActionError(null)
     setBulkActionLoading({ bulkId, action })
+    const groupVms = vms.filter((v) => v.bulk_id === bulkId)
     try {
       await clientApiFetch(`/vms/bulk/${bulkId}/${action}`, { method: 'POST' })
       await fetchVMs()
+      const label = action === 'start' ? 'started' : action === 'stop' ? 'stopped' : 'restarted'
+      toast.success(`${groupVms.length} VMs ${label}.`)
     } catch (err) {
       setActionError(err instanceof Error ? err.message : `Failed to ${action} bulk VMs`)
     } finally {
@@ -292,6 +305,34 @@ export default function VMsPage() {
         </div>
       </div>
 
+      {vms.length > 0 && (
+        <div className="animate-fade-in mb-5 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setShowActive((v) => !v)}
+            className={`border px-3 py-1 text-xs font-medium transition-colors ${showActive ? 'border-emerald-700 bg-emerald-950 text-emerald-400' : 'border-zinc-700 bg-zinc-900 text-zinc-500 hover:text-zinc-300'}`}
+          >
+            Active ({activeVMs.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowStopped((v) => !v)}
+            className={`border px-3 py-1 text-xs font-medium transition-colors ${showStopped ? 'border-zinc-600 bg-zinc-800 text-zinc-300' : 'border-zinc-700 bg-zinc-900 text-zinc-500 hover:text-zinc-300'}`}
+          >
+            Stopped ({stoppedVMs.length})
+          </button>
+          {inactiveVMs.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowPast((v) => !v)}
+              className={`border px-3 py-1 text-xs font-medium transition-colors ${showPast ? 'border-zinc-600 bg-zinc-800 text-zinc-300' : 'border-zinc-700 bg-zinc-900 text-zinc-500 hover:text-zinc-300'}`}
+            >
+              Past ({inactiveVMs.length})
+            </button>
+          )}
+        </div>
+      )}
+
       {vms.length === 0 ? (
         <PDiv fullWidth padding="p-12" className="animate-fade-in stagger-1">
           <div className="text-center">
@@ -305,7 +346,7 @@ export default function VMsPage() {
         </PDiv>
       ) : (
         <>
-          {activeVMs.length > 0 && (
+          {activeVMs.length > 0 && showActive && (
             <section className="animate-fade-in stagger-1 mb-6 flex flex-col gap-4">
               <h2 className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
                 Active ({activeVMs.length})
@@ -340,7 +381,7 @@ export default function VMsPage() {
             </section>
           )}
 
-          {stoppedVMs.length > 0 && (
+          {stoppedVMs.length > 0 && showStopped && (
             <section className="animate-fade-in stagger-2 mb-6 flex flex-col gap-4">
               <h2 className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
                 Stopped ({stoppedVMs.length})
@@ -373,7 +414,7 @@ export default function VMsPage() {
             </section>
           )}
 
-          {inactiveVMs.length > 0 && (
+          {inactiveVMs.length > 0 && showPast && (
             <section className="animate-fade-in stagger-3 flex flex-col gap-4">
               <h2 className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
                 Past ({inactiveVMs.length})
@@ -394,6 +435,14 @@ export default function VMsPage() {
                 </div>
               )}
             </section>
+          )}
+
+          {!(activeVMs.length > 0 && showActive) &&
+            !(stoppedVMs.length > 0 && showStopped) &&
+            !(inactiveVMs.length > 0 && showPast) && (
+            <PDiv fullWidth padding="p-12" className="animate-fade-in">
+              <p className="text-center text-zinc-600">Nothing to display.</p>
+            </PDiv>
           )}
         </>
       )}
