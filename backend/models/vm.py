@@ -14,6 +14,22 @@ class VMCreateRequest(BaseModel):
     disk_gb: int
     gpu_id: str | None = None
     duration_hours: int
+    ssh_public_key: str | None = None
+
+    @field_validator("ssh_public_key")
+    @classmethod
+    def validate_ssh_key(cls, v: str | None) -> str | None:
+        if v is None or v.strip() == "":
+            return None
+        key = v.strip()
+        valid_prefixes = (
+            "ssh-rsa", "ssh-ed25519", "ssh-dss",
+            "ecdsa-sha2-nistp256", "ecdsa-sha2-nistp384", "ecdsa-sha2-nistp521",
+            "sk-ssh-ed25519@openssh.com", "sk-ecdsa-sha2-nistp256@openssh.com",
+        )
+        if not any(key.startswith(p) for p in valid_prefixes):
+            raise ValueError("Invalid SSH public key format")
+        return key
 
     @field_validator("duration_hours")
     @classmethod
@@ -64,6 +80,22 @@ class BulkVMCreateRequest(BaseModel):
     password_mode: str  # "random" or "unified"
     unified_password: str | None = None
     source_vmid: int | None = None  # PVE vmid of user's own VM to use as template
+    ssh_public_key: str | None = None
+
+    @field_validator("ssh_public_key")
+    @classmethod
+    def validate_ssh_key(cls, v: str | None) -> str | None:
+        if v is None or v.strip() == "":
+            return None
+        key = v.strip()
+        valid_prefixes = (
+            "ssh-rsa", "ssh-ed25519", "ssh-dss",
+            "ecdsa-sha2-nistp256", "ecdsa-sha2-nistp384", "ecdsa-sha2-nistp521",
+            "sk-ssh-ed25519@openssh.com", "sk-ecdsa-sha2-nistp256@openssh.com",
+        )
+        if not any(key.startswith(p) for p in valid_prefixes):
+            raise ValueError("Invalid SSH public key format")
+        return key
 
     @field_validator("duration_hours")
     @classmethod

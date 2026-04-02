@@ -18,6 +18,7 @@ import type { VM } from '@/components/VMCard'
 import PButton from '@/components/baseui/pbutton'
 import PDiv from '@/components/baseui/pdiv'
 import PInput from '@/components/baseui/pinput'
+import PTextarea from '@/components/baseui/ptextarea'
 import PToggleButton from '@/components/baseui/ptogglebutton'
 import PixelSpinner from '@/components/baseui/spinner'
 import { toast } from '@/components/baseui/toast-manager'
@@ -128,7 +129,7 @@ function SelectOptionButton({
 // ---------------------------------------------------------------------------
 // Step definitions
 // ---------------------------------------------------------------------------
-type StepKey = 'os' | 'cpu' | 'ram' | 'disk' | 'gpu' | 'duration' | 'count_password' | 'review'
+type StepKey = 'os' | 'cpu' | 'ram' | 'disk' | 'gpu' | 'duration' | 'count_password' | 'ssh_key' | 'review'
 
 interface WizardStep {
   key: StepKey
@@ -142,6 +143,7 @@ const NORMAL_STEPS: WizardStep[] = [
   { key: 'disk',     label: 'Disk' },
   { key: 'gpu',      label: 'GPU' },
   { key: 'duration', label: 'Duration' },
+  { key: 'ssh_key',  label: 'SSH Key' },
   { key: 'review',   label: 'Review' },
 ]
 
@@ -152,6 +154,7 @@ const BULK_STEPS: WizardStep[] = [
   { key: 'disk',           label: 'Disk' },
   { key: 'duration',       label: 'Duration' },
   { key: 'count_password', label: 'Batch' },
+  { key: 'ssh_key',        label: 'SSH Key' },
   { key: 'review',         label: 'Review' },
 ]
 
@@ -172,6 +175,9 @@ function CreatePageContent() {
   const [hasGpu, setHasGpu] = useState(false)
   const [selectedGpu, setSelectedGpu] = useState<string>('')
   const [durationHours, setDurationHours] = useState(1)
+
+  // SSH key
+  const [sshPublicKey, setSshPublicKey] = useState('')
 
   // Bulk-specific form state
   const [vmCount, setVmCount] = useState(5)
@@ -346,6 +352,8 @@ function CreatePageContent() {
   const diskFits = resources ? totalDiskNeeded <= resources.disk_gb.available : true
 
   // Per-step "next" validity
+  const sshKeyValid = sshPublicKey.trim() === '' || /^(ssh-rsa|ssh-ed25519|ssh-dss|ecdsa-sha2-nistp(?:256|384|521)|sk-ssh-ed25519@openssh\.com|sk-ecdsa-sha2-nistp256@openssh\.com)\s+\S/.test(sshPublicKey.trim())
+
   const stepValid: Record<StepKey, boolean> = {
     os:             !!selectedOs,
     cpu:            cpuCores >= 1 && cpuCores <= maxCpu,
@@ -356,6 +364,7 @@ function CreatePageContent() {
     count_password: vmCount >= 1 && vmCount <= 50
                     && (passwordMode !== 'unified' || unifiedPassword.length >= 8)
                     && (!isBulk || (cpuFits && ramFits && diskFits)),
+    ssh_key:        sshKeyValid,
     review:         !!selectedOs && canAfford && (!isBulk || (cpuFits && ramFits && diskFits)) && (isBulk || !hasGpu || !!selectedGpu),
   }
 
@@ -391,6 +400,7 @@ function CreatePageContent() {
       disk_gb: diskGb,
       gpu_id: hasGpu ? selectedGpu : undefined,
       duration_hours: durationHours,
+      ssh_public_key: sshPublicKey.trim() || undefined,
     }
 
     try {
@@ -493,6 +503,7 @@ function CreatePageContent() {
       password_mode: passwordMode,
       unified_password: passwordMode === 'unified' ? unifiedPassword : undefined,
       source_vmid: selectedSourceVmid,
+      ssh_public_key: sshPublicKey.trim() || undefined,
     }
 
     try {
@@ -898,6 +909,27 @@ function CreatePageContent() {
           </div>
         )
 
+      case 'ssh_key':
+        return (
+          <div>
+            <h2 className="mb-2 text-lg font-semibold text-zinc-100">SSH Public Key <span className="text-sm font-normal text-zinc-500">(optional)</span></h2>
+            <p className="mb-4 text-sm text-zinc-500">
+              Paste your SSH public key to enable key-based login. Leave blank to use password only.
+            </p>
+            <PTextarea
+              value={sshPublicKey}
+              onChange={(e) => setSshPublicKey(e.target.value)}
+              placeholder="ssh-ed25519 AAAA... user@host"
+              rows={4}
+              minWidth="100%"
+              className="w-full"
+            />
+            {sshPublicKey.trim() !== '' && !sshKeyValid && (
+              <p className="mt-2 text-xs text-red-400">Invalid SSH public key format.</p>
+            )}
+          </div>
+        )
+
       case 'review':
         return (
           <div>
@@ -924,6 +956,7 @@ function CreatePageContent() {
                       ]
                   ),
                   { label: 'Duration', value: DURATION_OPTIONS.find((d) => d.hours === durationHours)?.label ?? `${durationHours}h` },
+                  { label: 'SSH Key', value: sshPublicKey.trim() ? 'Provided' : 'None (password only)' },
                 ].map(({ label, value }) => (
                   <div key={label} className="flex items-center justify-between border-b border-zinc-800 pb-2 last:border-0 last:pb-0">
                     <dt className="text-zinc-500">{label}</dt>

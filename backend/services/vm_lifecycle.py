@@ -8,6 +8,7 @@ import random
 import secrets
 import string
 import uuid
+from urllib.parse import quote
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
@@ -331,13 +332,15 @@ async def create_vm(
             )
 
         # Step 7: Configure cloud-init
-        await pve_client.update_vm_config(
-            vmid,
+        cloudinit_cfg: dict = dict(
             cipassword=password,
             ipconfig0=f"ip={ip_address}/{prefix_len},gw={settings.VM_GATEWAY}",
             nameserver=settings.VM_DNS,
             ciupgrade=0,
         )
+        if request.ssh_public_key:
+            cloudinit_cfg["sshkeys"] = quote(request.ssh_public_key, safe="")
+        await pve_client.update_vm_config(vmid, **cloudinit_cfg)
         await _emit(progress, "configure", "done")
 
         # Step 8: Start VM and poll until running
@@ -596,13 +599,15 @@ async def _provision_vm_from_template(
             memory=request.ram_gb * 1024,
         )
         await pve_client.resize_disk(vmid, "sata0", f"{request.disk_gb}G")
-        await pve_client.update_vm_config(
-            vmid,
+        cloudinit_cfg: dict = dict(
             cipassword=password,
             ipconfig0=f"ip={ip_address}/{prefix_len},gw={settings.VM_GATEWAY}",
             nameserver=settings.VM_DNS,
             ciupgrade=0,
         )
+        if request.ssh_public_key:
+            cloudinit_cfg["sshkeys"] = quote(request.ssh_public_key, safe="")
+        await pve_client.update_vm_config(vmid, **cloudinit_cfg)
         await _emit_vm_step(progress, vm_index, "configure", "done")
 
         # Start VM
