@@ -5,7 +5,7 @@ declare module 'next-auth' {
     user: {
       discordId: string
       discordUsername: string
-      avatar: string
+      avatar: string | null
       name?: string | null
       email?: string | null
       image?: string | null

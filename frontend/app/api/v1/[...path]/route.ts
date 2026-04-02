@@ -25,6 +25,15 @@ async function proxy(req: NextRequest): Promise<NextResponse> {
     headers['X-Discord-Id'] = discordId
   }
 
+  const discordUsername = token?.discordUsername as string | undefined
+  if (discordUsername) {
+    headers['X-Discord-Username'] = discordUsername
+  }
+
+  if ('avatar' in (token ?? {})) {
+    headers['X-Discord-Avatar'] = ((token?.avatar as string | null | undefined) ?? '')
+  }
+
   const body =
     req.method !== 'GET' && req.method !== 'HEAD'
       ? await req.text()

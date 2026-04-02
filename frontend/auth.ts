@@ -21,7 +21,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async session({ session, token }) {
       session.user.discordId = token.discordId as string
       session.user.discordUsername = token.discordUsername as string
-      session.user.avatar = token.avatar as string
+      session.user.avatar = (token.avatar as string | null | undefined) ?? null
       return session
     },
   },

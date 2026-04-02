@@ -15,6 +15,8 @@ from database import get_db
 async def get_current_user(
     authorization: str | None = Header(default=None),
     x_discord_id: str | None = Header(default=None),
+    x_discord_username: str | None = Header(default=None),
+    x_discord_avatar: str | None = Header(default=None),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ) -> dict:
     """Return the authenticated user injected by the trusted Next.js layer."""
@@ -26,9 +28,24 @@ async def get_current_user(
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     user = await db.users.find_one({"discord_id": x_discord_id})
+    username = (x_discord_username or "").strip() or None
+    avatar = x_discord_avatar if x_discord_avatar is not None else None
+
     if user is None:
-        # Auto-create on first authenticated request (upsert from proxy headers)
-        user = await upsert_user(discord_id=x_discord_id, username=x_discord_id, avatar=None, db=db)
+        # Auto-create on first authenticated request using forwarded Discord profile data.
+        user = await upsert_user(
+            discord_id=x_discord_id,
+            username=username or x_discord_id,
+            avatar=avatar,
+            db=db,
+        )
+    elif username is not None or x_discord_avatar is not None:
+        user = await upsert_user(
+            discord_id=x_discord_id,
+            username=username or user.get("discord_username") or x_discord_id,
+            avatar=avatar if x_discord_avatar is not None else user.get("discord_avatar"),
+            db=db,
+        )
 
     return _serialize_doc(user)
 
