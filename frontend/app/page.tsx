@@ -49,16 +49,16 @@ export default async function HomePage() {
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-10">
       <div className="animate-fade-in mb-8">
-        <h1 className="mb-1.5 text-3xl font-bold text-zinc-100">PVE Panel</h1>
+        <h1 className="mb-1.5 text-3xl font-bold text-zinc-100">Nelson{"'"}s Free VM</h1>
         <p className="text-zinc-500">
-          Spin up ephemeral Proxmox VMs using your point balance.
+          Get almost free VMs here!
         </p>
       </div>
 
       {session ? (
         <>
           <section className="animate-fade-in stagger-1 mb-8">
-            <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-500">
+            <h2 className="mb-3 text-md font-semibold uppercase tracking-widest text-zinc-500">
               Cluster Resources
             </h2>
             <PDiv fullWidth padding="p-6">
@@ -102,42 +102,28 @@ export default async function HomePage() {
           </section>
 
           <section className="animate-fade-in stagger-3">
-            <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-500">
+            <h2 className="mb-3 text-md font-semibold uppercase tracking-widest text-zinc-500">
               Your Account
             </h2>
-            <PDiv fullWidth padding="p-6">
-              <div className="mb-5 flex flex-wrap items-center gap-8">
+            <PDiv fullWidth padding="p-6 space-y-4">
+              <div className="flex flex-wrap items-center gap-8">
                 <div>
                   <p className="text-3xl font-bold text-indigo-300">
-                    {me ? me.points.toLocaleString() : '—'}
+                    {me ? me.points.toLocaleString() : 'N/A'}
                   </p>
-                  <p className="mt-0.5 text-xs font-medium uppercase tracking-wider text-zinc-500">Points</p>
+                  <p className="mt-0.5 text-xs font-medium uppercase tracking-wider text-zinc-300">Points</p>
                 </div>
                 <div className="h-10 w-px bg-zinc-700" />
                 <div>
                   <p className="text-3xl font-bold text-emerald-400">
-                    {me ? me.active_vm_count : '—'}
+                    {me ? me.active_vm_count : 'N/A'}
                   </p>
-                  <p className="mt-0.5 text-xs font-medium uppercase tracking-wider text-zinc-500">Active VMs</p>
+                  <p className="mt-0.5 text-xs font-medium uppercase tracking-wider text-zinc-300">Active VMs</p>
                 </div>
               </div>
-              <div className="flex flex-wrap gap-3">
-                <Link href="/create">
-                  <PDiv animated shadowColor="indigo-700" borderColor="indigo-400" padding="px-4 py-2">
-                    <span className="text-sm font-medium text-indigo-200">Create VM</span>
-                  </PDiv>
-                </Link>
-                <Link href="/vms">
-                  <PDiv animated padding="px-4 py-2">
-                    <span className="text-sm font-medium text-zinc-200">My VMs</span>
-                  </PDiv>
-                </Link>
-                <Link href="/redeem">
-                  <PDiv animated padding="px-4 py-2">
-                    <span className="text-sm font-medium text-zinc-200">Redeem Code</span>
-                  </PDiv>
-                </Link>
-              </div>
+              <p>
+                Go to the <Link href="/vms" className="text-indigo-400 hover:underline">My VMs</Link> page to see your active VMs, or click your avatar to create VMs, redeem codes and more.
+              </p>
             </PDiv>
           </section>
         </>

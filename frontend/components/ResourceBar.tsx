@@ -20,13 +20,13 @@ export default function ResourceBar({ label, used, total, unit }: ResourceBarPro
 
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="flex items-center justify-between text-sm">
+      <div className="flex items-center justify-between text-md">
         <span className="font-medium text-zinc-200">{label}</span>
         <div className="flex items-center gap-2">
-          <span className="text-zinc-500">
+          <span className="text-zinc-400">
             {used} / {total} {unit}
           </span>
-          <span className={`text-xs font-semibold tabular-nums ${textClass}`}>
+          <span className={`text-md font-semibold tabular-nums ${textClass}`}>
             {pct.toFixed(0)}%
           </span>
         </div>

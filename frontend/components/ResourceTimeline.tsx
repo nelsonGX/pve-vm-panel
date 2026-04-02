@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import PButton from '@/components/baseui/pbutton'
 import PDiv from '@/components/baseui/pdiv'
+import { Cpu, MemoryStick, HardDrive } from 'lucide-react'
 
 interface TimelineUser {
   username: string
@@ -120,7 +121,7 @@ export default function ResourceTimeline() {
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
+        <h2 className="text-md font-semibold uppercase tracking-widest text-zinc-500">
           Resource Timeline
         </h2>
         <PButton
@@ -134,7 +135,7 @@ export default function ResourceTimeline() {
 
       <PDiv fullWidth padding="p-4">
         {/* Time axis */}
-        <div className="relative mb-2 ml-[192px] h-5">
+        <div className="relative mb-2 ml-48 h-5">
           {ticks.map((tick, i) => {
             const x = pct(tick.getTime())
             if (x < 0 || x > 100) return null
@@ -165,25 +166,26 @@ export default function ResourceTimeline() {
             return (
               <div key={vm.id} className="flex items-center gap-3">
                 {/* Left: user + spec info */}
-                <div className="flex w-[192px] shrink-0 items-center gap-2 overflow-hidden">
+                <div className="flex w-48 shrink-0 items-center gap-2 overflow-hidden">
                   {url ? (
                     <Image
                       src={url}
                       alt={vm.user.username}
-                      width={28}
-                      height={28}
-                      className=""
+                      width={32}
+                      height={32}
+                      className="border-2 border-zinc-300"
                       unoptimized
+                      draggable={false}
                     />
                   ) : (
                     <Initials name={vm.user.username} />
                   )}
                   <div className="min-w-0">
-                    <p className="truncate text-xs font-medium text-zinc-300">
+                    <p className="truncate text-md font-medium text-zinc-300">
                       {vm.user.username}
                     </p>
-                    <p className="truncate text-[10px] text-zinc-600">
-                      {vm.os} &middot; {vm.cpu_cores}c {vm.ram_gb}GB
+                    <p className="truncate text-sm text-zinc-400 flex items-center space-x-1">
+                      <Cpu size={14} /><span>{vm.cpu_cores}c / </span><MemoryStick size={14} /><span>{vm.ram_gb}GB / </span><HardDrive size={14} /><span>{vm.disk_gb}GB</span>
                       {vm.has_gpu && ' · GPU'}
                     </p>
                   </div>
@@ -227,18 +229,18 @@ export default function ResourceTimeline() {
         </div>
 
         {/* Legend */}
-        <div className="mt-3 ml-[192px] flex flex-wrap items-center gap-4">
+        <div className="mt-3 ml-48 flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-1.5">
             <div className="h-2.5 w-4 bg-indigo-500 opacity-75" />
-            <span className="text-[10px] text-zinc-500">Running</span>
+            <span className="text-xs text-zinc-300">Running</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="h-2.5 w-4 bg-amber-500 opacity-75" />
-            <span className="text-[10px] text-zinc-500">Provisioning</span>
+            <span className="text-xs text-zinc-300">Provisioning</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="h-3.5 w-0.5 bg-red-500/80" />
-            <span className="text-[10px] text-zinc-500">Now</span>
+            <span className="text-xs text-zinc-300">Now</span>
           </div>
         </div>
       </PDiv>

@@ -5,8 +5,8 @@ import SessionProviderWrapper from '@/components/SessionProviderWrapper'
 import Header from '@/components/Header'
 
 export const metadata: Metadata = {
-  title: 'PVE Panel',
-  description: 'Spin up ephemeral Proxmox VMs with your point balance',
+  title: 'Nelson\'s Free VM',
+  description: 'Get almost free VMs here!',
 }
 
 export default async function RootLayout({
