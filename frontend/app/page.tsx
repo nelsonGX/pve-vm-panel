@@ -1,10 +1,10 @@
 import Link from 'next/link'
+import type { Session } from 'next-auth'
 import { auth } from '@/auth'
 import { apiFetch } from '@/lib/api'
 import ResourceBar from '@/components/ResourceBar'
 import ResourceTimeline from '@/components/ResourceTimeline'
 import PDiv from '@/components/baseui/pdiv'
-import PButton from '@/components/baseui/pbutton'
 
 interface ResourcesData {
   cpu: { available: number; total: number }
@@ -18,7 +18,9 @@ interface MeData {
   active_vm_count: number
 }
 
-async function getResources(session: Awaited<ReturnType<typeof auth>>): Promise<ResourcesData | null> {
+type AuthSession = Session | null
+
+async function getResources(session: AuthSession): Promise<ResourcesData | null> {
   try {
     return await apiFetch('/resources', {}, session)
   } catch {
@@ -26,7 +28,7 @@ async function getResources(session: Awaited<ReturnType<typeof auth>>): Promise<
   }
 }
 
-async function getMe(session: Awaited<ReturnType<typeof auth>>): Promise<MeData | null> {
+async function getMe(session: AuthSession): Promise<MeData | null> {
   if (!session) return null
   try {
     return await apiFetch('/me', {}, session)
