@@ -4,12 +4,14 @@ import Link from 'next/link'
 import { useSession, signIn, signOut } from 'next-auth/react'
 import PointsBadge from './PointsBadge'
 import Image from 'next/image'
+import PButton from '@/components/baseui/pbutton'
+import PixelSpinner from '@/components/baseui/spinner'
 
 export default function Header() {
   const { data: session, status } = useSession()
 
   return (
-    <header className="sticky top-0 z-50 border-b border-zinc-800/60 bg-zinc-950/90 backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b-2 border-zinc-700 bg-zinc-950/95 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
         {/* Left: brand + nav */}
         <div className="flex items-center gap-6">
@@ -22,19 +24,19 @@ export default function Header() {
           <nav className="hidden items-center gap-1 text-sm md:flex">
             <Link
               href="/"
-              className="rounded-md px-3 py-1.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100"
+              className="px-3 py-1.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100 border border-transparent hover:border-zinc-700"
             >
               Home
             </Link>
             <Link
               href="/vms"
-              className="rounded-md px-3 py-1.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100"
+              className="px-3 py-1.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100 border border-transparent hover:border-zinc-700"
             >
               My VMs
             </Link>
             <Link
               href="/create"
-              className="rounded-md px-3 py-1.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100"
+              className="px-3 py-1.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100 border border-transparent hover:border-zinc-700"
             >
               Create
             </Link>
@@ -53,10 +55,11 @@ export default function Header() {
                     alt={session.user.name ?? 'avatar'}
                     width={32}
                     height={32}
-                    className="rounded-full ring-2 ring-zinc-700"
+                    className="ring-2 ring-zinc-600"
+                    style={{ imageRendering: 'pixelated' }}
                   />
                 ) : (
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-700 text-sm font-bold text-white ring-2 ring-zinc-700">
+                  <div className="flex h-8 w-8 items-center justify-center bg-indigo-700 text-sm font-bold text-white ring-2 ring-zinc-600">
                     {(session.user.name ?? '?')[0].toUpperCase()}
                   </div>
                 )}
@@ -64,22 +67,24 @@ export default function Header() {
                   {session.user.name}
                 </span>
               </div>
-              <button
+              <PButton
+                variant="gray"
+                customInnerClass="py-1"
                 onClick={() => signOut({ callbackUrl: '/' })}
-                className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-sm text-zinc-300 transition-all duration-150 hover:border-zinc-600 hover:bg-zinc-700 hover:text-zinc-100 active:scale-95"
               >
                 Sign out
-              </button>
+              </PButton>
             </>
           ) : status === 'loading' ? (
-            <div className="h-8 w-24 animate-pulse rounded-lg bg-zinc-800" />
+            <PixelSpinner color="bg-zinc-500" size={6} />
           ) : (
-            <button
+            <PButton
+              variant="primary"
+              customInnerClass="py-1"
               onClick={() => signIn('discord', { callbackUrl: '/' })}
-              className="rounded-lg bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white shadow-sm shadow-indigo-900/50 transition-all duration-150 hover:bg-indigo-500 active:scale-95"
             >
               Login with Discord
-            </button>
+            </PButton>
           )}
         </div>
       </div>

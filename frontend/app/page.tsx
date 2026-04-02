@@ -51,48 +51,49 @@ export default async function HomePage() {
         </p>
       </div>
 
-      {/* Auth section */}
       {session ? (
         <>
           <section className="animate-fade-in stagger-1 mb-8">
             <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-500">
               Cluster Resources
             </h2>
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900/80 p-6 shadow-sm">
-              {resources ? (
-                <div className="flex flex-col gap-5">
-                  <ResourceBar
-                    label="CPU"
-                    used={resources.cpu.total - resources.cpu.available}
-                    total={resources.cpu.total}
-                    unit="cores"
-                  />
-                  <ResourceBar
-                    label="RAM"
-                    used={resources.ram_gb.total - resources.ram_gb.available}
-                    total={resources.ram_gb.total}
-                    unit="GB"
-                  />
-                  <ResourceBar
-                    label="Disk"
-                    used={resources.disk_gb.total - resources.disk_gb.available}
-                    total={resources.disk_gb.total}
-                    unit="GB"
-                  />
-                  {gpuTotal > 0 && (
+            <div className="border-b-4 border-r-4 border-zinc-600 bg-zinc-600 w-full pixel-panel-outer">
+              <div className="border-4 border-zinc-400 bg-zinc-900/85 w-full pixel-panel-inner p-6">
+                {resources ? (
+                  <div className="flex flex-col gap-5">
                     <ResourceBar
-                      label="GPU Slots"
-                      used={gpuUsed}
-                      total={gpuTotal}
-                      unit="slots"
+                      label="CPU"
+                      used={resources.cpu.total - resources.cpu.available}
+                      total={resources.cpu.total}
+                      unit="cores"
                     />
-                  )}
-                </div>
-              ) : (
-                <p className="text-sm text-zinc-500">
-                  Could not load resource stats.
-                </p>
-              )}
+                    <ResourceBar
+                      label="RAM"
+                      used={resources.ram_gb.total - resources.ram_gb.available}
+                      total={resources.ram_gb.total}
+                      unit="GB"
+                    />
+                    <ResourceBar
+                      label="Disk"
+                      used={resources.disk_gb.total - resources.disk_gb.available}
+                      total={resources.disk_gb.total}
+                      unit="GB"
+                    />
+                    {gpuTotal > 0 && (
+                      <ResourceBar
+                        label="GPU Slots"
+                        used={gpuUsed}
+                        total={gpuTotal}
+                        unit="slots"
+                      />
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-zinc-500">
+                    Could not load resource stats.
+                  </p>
+                )}
+              </div>
             </div>
           </section>
 
@@ -102,58 +103,66 @@ export default async function HomePage() {
 
           <section className="animate-fade-in stagger-3">
             <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-zinc-500">
-            Your Account
+              Your Account
             </h2>
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900/80 p-6 shadow-sm">
-              <div className="mb-5 flex flex-wrap items-center gap-8">
-                <div>
-                  <p className="text-3xl font-bold text-indigo-300">
-                    {me ? me.points.toLocaleString() : '—'}
-                  </p>
-                  <p className="mt-0.5 text-xs font-medium uppercase tracking-wider text-zinc-500">Points</p>
+            <div className="border-b-4 border-r-4 border-zinc-600 bg-zinc-600 w-full pixel-panel-outer">
+              <div className="border-4 border-zinc-400 bg-zinc-900/85 w-full pixel-panel-inner p-6">
+                <div className="mb-5 flex flex-wrap items-center gap-8">
+                  <div>
+                    <p className="text-3xl font-bold text-indigo-300">
+                      {me ? me.points.toLocaleString() : '—'}
+                    </p>
+                    <p className="mt-0.5 text-xs font-medium uppercase tracking-wider text-zinc-500">Points</p>
+                  </div>
+                  <div className="h-10 w-px bg-zinc-700" />
+                  <div>
+                    <p className="text-3xl font-bold text-emerald-400">
+                      {me ? me.active_vm_count : '—'}
+                    </p>
+                    <p className="mt-0.5 text-xs font-medium uppercase tracking-wider text-zinc-500">Active VMs</p>
+                  </div>
                 </div>
-                <div className="h-10 w-px bg-zinc-800" />
-                <div>
-                  <p className="text-3xl font-bold text-emerald-400">
-                    {me ? me.active_vm_count : '—'}
-                  </p>
-                  <p className="mt-0.5 text-xs font-medium uppercase tracking-wider text-zinc-500">Active VMs</p>
+                <div className="flex flex-wrap gap-3">
+                  <Link href="/create">
+                    <div className="border-b-4 border-r-4 border-indigo-700 bg-indigo-700 pixel-panel-outer hover:border-b-6 hover:border-r-6 hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all duration-75 ease-in">
+                      <div className="border-4 border-indigo-400 bg-zinc-900/85 pixel-panel-inner px-4 py-2 text-sm font-medium text-indigo-200">
+                        Create VM
+                      </div>
+                    </div>
+                  </Link>
+                  <Link href="/vms">
+                    <div className="border-b-4 border-r-4 border-zinc-600 bg-zinc-600 pixel-panel-outer hover:border-b-6 hover:border-r-6 hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all duration-75 ease-in">
+                      <div className="border-4 border-zinc-400 bg-zinc-900/85 pixel-panel-inner px-4 py-2 text-sm font-medium text-zinc-200">
+                        My VMs
+                      </div>
+                    </div>
+                  </Link>
+                  <Link href="/redeem">
+                    <div className="border-b-4 border-r-4 border-zinc-600 bg-zinc-600 pixel-panel-outer hover:border-b-6 hover:border-r-6 hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all duration-75 ease-in">
+                      <div className="border-4 border-zinc-400 bg-zinc-900/85 pixel-panel-inner px-4 py-2 text-sm font-medium text-zinc-200">
+                        Redeem Code
+                      </div>
+                    </div>
+                  </Link>
                 </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Link
-                  href="/create"
-                  className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm shadow-indigo-900/40 transition-all duration-150 hover:bg-indigo-500 active:scale-95"
-                >
-                  Create VM
-                </Link>
-                <Link
-                  href="/vms"
-                  className="rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-200 transition-all duration-150 hover:border-zinc-600 hover:bg-zinc-700 active:scale-95"
-                >
-                  My VMs
-                </Link>
-                <Link
-                  href="/redeem"
-                  className="rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-200 transition-all duration-150 hover:border-zinc-600 hover:bg-zinc-700 active:scale-95"
-                >
-                  Redeem Code
-                </Link>
               </div>
             </div>
           </section>
         </>
       ) : (
-        <section className="animate-fade-in stagger-3 rounded-xl border border-zinc-800 bg-zinc-900/80 p-10 text-center shadow-sm">
-          <p className="mb-5 text-zinc-400">
-            Sign in with Discord to view cluster activity and start spinning up VMs.
-          </p>
-          <Link
-            href="/login"
-            className="inline-block rounded-lg bg-indigo-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-900/40 transition-all duration-150 hover:bg-indigo-500 active:scale-95"
-          >
-            Login with Discord
-          </Link>
+        <section className="animate-fade-in stagger-3 border-b-4 border-r-4 border-zinc-600 bg-zinc-600 w-full pixel-panel-outer">
+          <div className="border-4 border-zinc-400 bg-zinc-900/85 w-full pixel-panel-inner p-10 text-center">
+            <p className="mb-5 text-zinc-400">
+              Sign in with Discord to view cluster activity and start spinning up VMs.
+            </p>
+            <Link href="/login">
+              <div className="inline-block border-b-4 border-r-4 border-indigo-700 bg-indigo-700 pixel-panel-outer hover:border-b-6 hover:border-r-6 hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all duration-75 ease-in">
+                <div className="border-4 border-indigo-400 bg-zinc-900/85 pixel-panel-inner px-6 py-2.5 text-sm font-medium text-indigo-200">
+                  Login with Discord
+                </div>
+              </div>
+            </Link>
+          </div>
         </section>
       )}
     </div>

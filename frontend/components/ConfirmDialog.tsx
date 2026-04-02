@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import PButton from '@/components/baseui/pbutton'
 
 interface ConfirmDialogProps {
   open: boolean
@@ -39,33 +40,30 @@ export default function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
       onClick={onCancel}
     >
       <div
-        className="animate-scale-in w-full max-w-md rounded-xl border border-zinc-700/60 bg-zinc-900 p-6 shadow-2xl"
+        className="animate-scale-in w-full max-w-md border-b-4 border-r-4 border-zinc-600 bg-zinc-600 pixel-panel-outer"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="mb-2 text-lg font-semibold text-zinc-100">{title}</h2>
-        <p className="mb-6 text-sm text-zinc-400">{message}</p>
-        <div className="flex justify-end gap-2">
-          <button
-            ref={cancelRef}
-            onClick={onCancel}
-            className="rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-200 transition-all duration-150 hover:border-zinc-600 hover:bg-zinc-700 active:scale-95"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            className={`rounded-lg px-4 py-2 text-sm font-medium transition-all duration-150 active:scale-95 ${
-              danger
-                ? 'bg-red-600 text-white hover:bg-red-500'
-                : 'bg-indigo-600 text-white hover:bg-indigo-500'
-            }`}
-          >
-            {confirmLabel}
-          </button>
+        <div className="border-4 border-zinc-400 bg-zinc-900 pixel-panel-inner p-6">
+          <h2 className="mb-2 text-lg font-semibold text-zinc-100">{title}</h2>
+          <p className="mb-6 text-sm text-zinc-400">{message}</p>
+          <div className="flex justify-end gap-3">
+            <PButton
+              variant="secondary"
+              onClick={onCancel}
+            >
+              Cancel
+            </PButton>
+            <PButton
+              variant={danger ? 'danger' : 'primary'}
+              onClick={onConfirm}
+            >
+              {confirmLabel}
+            </PButton>
+          </div>
         </div>
       </div>
     </div>

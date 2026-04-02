@@ -3,11 +3,13 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { ChevronRight, Plus } from 'lucide-react'
 import { clientApiFetch } from '@/lib/api'
 import VMCard, { type VM } from '@/components/VMCard'
 import ConfirmDialog from '@/components/ConfirmDialog'
 import Link from 'next/link'
+import PButton from '@/components/baseui/pbutton'
+import PixelSpinner from '@/components/baseui/spinner'
+import Icon from '@/components/baseui/icon'
 
 // ---------------------------------------------------------------------------
 // Bulk group component
@@ -28,60 +30,60 @@ function BulkGroup({ bulkId, vms, onDeleteGroup, onDeleteVm }: BulkGroupProps) {
   const shortId = bulkId.slice(0, 8)
 
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/60">
-      {/* Group header */}
-      <div className="flex items-center gap-3 px-4 py-3">
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          className="flex flex-1 items-center gap-2.5 text-left"
-        >
-          <ChevronRight
-            className={`h-4 w-4 text-zinc-400 transition-transform duration-150 ${expanded ? 'rotate-90' : ''}`}
-          />
-          <span className="font-mono text-xs text-zinc-500">{shortId}</span>
-          <span className="text-sm font-medium text-zinc-200">
-            Bulk Group
-          </span>
-          <span className="rounded-md border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-xs text-zinc-400">
-            {vms.length} VMs
-          </span>
-          {activeCount > 0 && (
-            <span className="rounded-md border border-emerald-800/50 bg-emerald-950/50 px-2 py-0.5 text-xs text-emerald-400">
-              {activeCount} active
-            </span>
-          )}
-        </button>
-
-        {activeCount > 0 && (
+    <div className="border-b-4 border-r-4 border-zinc-600 bg-zinc-600 w-full pixel-panel-outer">
+      <div className="border-4 border-zinc-400 bg-zinc-900/85 w-full pixel-panel-inner">
+        {/* Group header */}
+        <div className="flex items-center gap-3 px-4 py-3">
           <button
             type="button"
-            onClick={() => onDeleteGroup(bulkId)}
-            className="rounded-lg border border-red-900/50 bg-red-950/40 px-3 py-1.5 text-xs font-medium text-red-400 transition-all duration-150 hover:border-red-800 hover:bg-red-900/50 active:scale-95"
+            onClick={() => setExpanded((v) => !v)}
+            className="flex flex-1 items-center gap-2.5 text-left"
           >
-            Delete All
+            <Icon name={expanded ? 'dropup' : 'dropdown'} size={14} color="#71717a" />
+            <span className="font-mono text-xs text-zinc-500">{shortId}</span>
+            <span className="text-sm font-medium text-zinc-200">
+              Bulk Group
+            </span>
+            <span className="border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-xs text-zinc-400">
+              {vms.length} VMs
+            </span>
+            {activeCount > 0 && (
+              <span className="border border-emerald-800 bg-emerald-950 px-2 py-0.5 text-xs text-emerald-400">
+                {activeCount} active
+              </span>
+            )}
           </button>
+
+          {activeCount > 0 && (
+            <PButton
+              variant="danger"
+              customInnerClass="py-1"
+              onClick={() => onDeleteGroup(bulkId)}
+            >
+              Delete All
+            </PButton>
+          )}
+        </div>
+
+        {/* VM grid */}
+        {expanded && (
+          <div className="border-t-2 border-zinc-700 p-4">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {vms.map((vm) => (
+                <VMCard
+                  key={vm.id}
+                  vm={vm}
+                  onDelete={
+                    onDeleteVm && (vm.status === 'running' || vm.status === 'provisioning')
+                      ? (id) => onDeleteVm(id)
+                      : undefined
+                  }
+                />
+              ))}
+            </div>
+          </div>
         )}
       </div>
-
-      {/* VM grid */}
-      {expanded && (
-        <div className="border-t border-zinc-800 p-4">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {vms.map((vm) => (
-              <VMCard
-                key={vm.id}
-                vm={vm}
-                onDelete={
-                  onDeleteVm && (vm.status === 'running' || vm.status === 'provisioning')
-                    ? (id) => onDeleteVm(id)
-                    : undefined
-                }
-              />
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   )
 }
@@ -122,7 +124,7 @@ export default function VMsPage() {
   if (status === 'loading' || loading) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-zinc-700 border-t-indigo-500" />
+        <PixelSpinner color="bg-indigo-400" size={10} />
       </div>
     )
   }
@@ -207,38 +209,36 @@ export default function VMsPage() {
     <div className="mx-auto w-full max-w-4xl px-4 py-8">
       <div className="animate-fade-in mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-zinc-100">My VMs</h1>
-        <div className="flex gap-2">
-          <Link
-            href="/create?bulk"
-            className="rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-200 shadow-sm transition-all duration-150 hover:border-zinc-600 hover:bg-zinc-700 active:scale-95"
-          >
-            Bulk Create
+        <div className="flex gap-3">
+          <Link href="/create?bulk">
+            <PButton variant="secondary">Bulk Create</PButton>
           </Link>
-          <Link
-            href="/create"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm shadow-indigo-900/40 transition-all duration-150 hover:bg-indigo-500 active:scale-95"
-          >
-            <Plus className="h-4 w-4" />
-            Create VM
+          <Link href="/create">
+            <PButton variant="primary">
+              + Create VM
+            </PButton>
           </Link>
         </div>
       </div>
 
       {error && (
-        <div className="animate-fade-in mb-4 rounded-lg border border-red-800/60 bg-red-950/30 px-4 py-3 text-sm text-red-400">
+        <div className="animate-fade-in mb-4 border-b-2 border-r-2 border-red-800 bg-red-950/30 px-4 py-3 text-sm text-red-400">
           {error}
         </div>
       )}
 
       {vms.length === 0 ? (
-        <div className="animate-fade-in stagger-1 rounded-xl border border-zinc-800 bg-zinc-900/80 p-12 text-center">
-          <p className="mb-5 text-zinc-400">You have no VMs yet.</p>
-          <Link
-            href="/create"
-            className="inline-block rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white shadow-sm shadow-indigo-900/40 transition-all duration-150 hover:bg-indigo-500 active:scale-95"
-          >
-            Create your first VM
-          </Link>
+        <div className="animate-fade-in stagger-1 border-b-4 border-r-4 border-zinc-600 bg-zinc-600 w-full pixel-panel-outer">
+          <div className="border-4 border-zinc-400 bg-zinc-900/85 w-full pixel-panel-inner p-12 text-center">
+            <p className="mb-5 text-zinc-400">You have no VMs yet.</p>
+            <Link href="/create">
+              <div className="inline-block border-b-4 border-r-4 border-indigo-700 bg-indigo-700 pixel-panel-outer hover:border-b-6 hover:border-r-6 hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all duration-75 ease-in">
+                <div className="border-4 border-indigo-400 bg-zinc-900/85 pixel-panel-inner px-5 py-2 text-sm font-medium text-indigo-200">
+                  Create your first VM
+                </div>
+              </div>
+            </Link>
+          </div>
         </div>
       ) : (
         <>
@@ -248,7 +248,6 @@ export default function VMsPage() {
                 Active ({activeVMs.length})
               </h2>
 
-              {/* Bulk groups */}
               {Array.from(activeGroups.entries()).map(([bulkId, groupVms]) => (
                 <BulkGroup
                   key={bulkId}
@@ -259,7 +258,6 @@ export default function VMsPage() {
                 />
               ))}
 
-              {/* Individual VMs */}
               {activeIndividuals.length > 0 && (
                 <div className="grid gap-4 sm:grid-cols-2">
                   {activeIndividuals.map((vm) => (

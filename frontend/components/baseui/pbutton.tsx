@@ -22,13 +22,14 @@ interface PButtonProps {
 	spinnerTimeout?: number;
 	loading?: boolean;
 	customInnerClass?: string;
+	fullWidth?: boolean;
 }
 
-export default function PButton({ 
-	children, 
-	onClick, 
-	type = 'button', 
-	disabled = false, 
+export default function PButton({
+	children,
+	onClick,
+	type = 'button',
+	disabled = false,
 	variant = 'primary',
 	minWidth,
 	className = '',
@@ -39,19 +40,20 @@ export default function PButton({
 	spinnerColor = 'bg-white',
 	spinnerTimeout = 10000,
 	loading = false,
-	customInnerClass = "py-2"
+	customInnerClass = "py-2",
+	fullWidth = false,
 }: PButtonProps) {
 	const [isClicked, setIsClicked] = useState(false);
-	const [isDisabled, setIsDisabled] = useState(disabled);
-	
-	const isButtonDisabled = isDisabled || disabled || loading;
+	const [temporarilyDisabled, setTemporarilyDisabled] = useState(false);
+
+	const isButtonDisabled = temporarilyDisabled || disabled || loading;
 	const shouldShowSpinner = (spinnerAfterClick && isClicked) || loading;
 
 	const getClasses = () => {
 		const baseClasses = [
 			'border-b-4 hover:border-b-6 border-r-4 hover:border-r-6',
 			'active:border-b-3 active:border-r-3',
-			'transition-all duration-75 ease-in max-w-fit max-h-fit',
+			`transition-all duration-75 ease-in ${fullWidth ? 'w-full' : 'max-w-fit max-h-fit'}`,
 			!disableFixedPaddingY && 'hover:-translate-y-0.5 hover:-mb-0.5 active:translate-y-0.5 active:mb-0.5',
 			!disableFixedPaddingX && 'hover:mr-[13.9px] hover:-translate-x-0.5 active:mr-4 active:translate-x-0.5'
 		].filter(Boolean).join(' ');
@@ -93,9 +95,9 @@ export default function PButton({
 			onClick();
 		}
 		if (disableAfterClick) {
-			setIsDisabled(true);
+			setTemporarilyDisabled(true);
 			setTimeout(() => {
-				setIsDisabled(false);
+				setTemporarilyDisabled(false);
 				setIsClicked(false);
 			}, spinnerTimeout);
 		} else {

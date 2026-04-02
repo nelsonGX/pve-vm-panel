@@ -31,9 +31,9 @@ export default function ResourceBar({ label, used, total, unit }: ResourceBarPro
           </span>
         </div>
       </div>
-      <div className="h-2.5 w-full overflow-hidden rounded-full bg-zinc-800">
+      <div className="h-3 w-full overflow-hidden bg-zinc-800 border border-zinc-700">
         <div
-          className={`h-full rounded-full transition-all duration-500 ${fillClass}`}
+          className={`h-full transition-all duration-500 ${fillClass}`}
           style={{ width: `${pct}%` }}
         />
       </div>

@@ -3,14 +3,6 @@
 import { useEffect, useState, useCallback, Suspense } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import {
-  ArrowLeft,
-  ArrowRight,
-  Check,
-  ChevronLeft,
-  Minus,
-  Plus,
-} from 'lucide-react'
 import { clientApiFetch } from '@/lib/api'
 import ProvisioningModal, {
   type ProvisioningStep,
@@ -23,6 +15,10 @@ import BulkProvisioningModal, {
   type BulkCredential,
 } from '@/components/BulkProvisioningModal'
 import type { VM } from '@/components/VMCard'
+import PButton from '@/components/baseui/pbutton'
+import PInput from '@/components/baseui/pinput'
+import PToggleButton from '@/components/baseui/ptogglebutton'
+import PixelSpinner from '@/components/baseui/spinner'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -99,6 +95,47 @@ function computeCost(
       diskGb * pricing.price_disk +
       (hasGpu ? pricing.price_gpu : 0)) *
       durationHours,
+  )
+}
+
+// Pixel selector button (for OS, RAM, Duration choices)
+function PixelSelectButton({
+  selected,
+  disabled,
+  onClick,
+  children,
+}: {
+  selected: boolean
+  disabled?: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  const outerClass = selected
+    ? 'border-indigo-700 bg-indigo-700'
+    : 'border-zinc-600 bg-zinc-600'
+  const innerClass = selected
+    ? 'border-indigo-400 text-indigo-200'
+    : 'border-zinc-400 text-zinc-300'
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`border-b-4 border-r-4 ${outerClass} pixel-panel-outer hover:border-b-6 hover:border-r-6 hover:-translate-x-0.5 hover:-translate-y-0.5 active:border-b-3 active:border-r-3 active:translate-y-0.5 active:translate-x-0.5 transition-all duration-75 ease-in disabled:opacity-40 disabled:cursor-not-allowed`}
+      style={{
+        clipPath: 'polygon(0 4px, 4px 4px, 4px 0, calc(100% - 4px) 0, calc(100% - 4px) 8px, 100% 8px, 100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%, 8px 100%, 8px calc(100% - 4px), 0 calc(100% - 4px))'
+      }}
+    >
+      <div
+        className={`border-4 ${innerClass} bg-zinc-900/85 px-4 py-2 text-sm font-medium`}
+        style={{
+          clipPath: 'polygon(0 4px, 4px 4px, 4px 0, calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px), 0 calc(100% - 4px))'
+        }}
+      >
+        {children}
+      </div>
+    </button>
   )
 }
 
@@ -225,7 +262,7 @@ function CreatePageContent() {
   if (status === 'loading' || dataLoading) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-zinc-700 border-t-indigo-500" />
+        <PixelSpinner color="bg-indigo-400" size={10} />
       </div>
     )
   }
@@ -238,14 +275,11 @@ function CreatePageContent() {
   if (dataError) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <div className="rounded-xl border border-red-800/60 bg-red-950/30 p-6 text-center">
-          <p className="mb-3 text-red-400">{dataError}</p>
-          <button
-            onClick={loadData}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-500"
-          >
-            Retry
-          </button>
+        <div className="border-b-4 border-r-4 border-red-800 bg-red-800 pixel-panel-outer">
+          <div className="border-4 border-red-400 bg-zinc-900 pixel-panel-inner p-6 text-center">
+            <p className="mb-3 text-red-400">{dataError}</p>
+            <PButton variant="primary" onClick={loadData}>Retry</PButton>
+          </div>
         </div>
       </div>
     )
@@ -277,7 +311,7 @@ function CreatePageContent() {
   const visibleSteps = baseSteps.filter((s) => s.key !== 'gpu' || gpuAvailable)
   const currentStep = visibleSteps[stepIndex]
 
-  // Total resources needed (only meaningful once vmCount is set, used in count_password + review)
+  // Total resources needed
   const totalCpuNeeded  = cpuCores * vmCount
   const totalRamNeeded  = ramGb    * vmCount
   const totalDiskNeeded = diskGb   * vmCount
@@ -548,28 +582,21 @@ function CreatePageContent() {
               {isBulk ? 'Choose a base OS or use your own VM as template' : 'Choose an operating system'}
             </h2>
 
-            {/* Standard OS grid */}
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {OS_OPTIONS.map((os) => (
-                <button
+                <PixelSelectButton
                   key={os.id}
-                  type="button"
+                  selected={selectedOs === os.id && selectedSourceVmid === null}
                   onClick={() => {
                     setSelectedOs(os.id)
                     if (isBulk) setSelectedSourceVmid(null)
                   }}
-                  className={`rounded-lg border px-3 py-2.5 text-sm font-medium transition-all duration-150 active:scale-95 ${
-                    selectedOs === os.id && selectedSourceVmid === null
-                      ? 'border-indigo-600/60 bg-indigo-950/60 text-indigo-300 shadow-sm shadow-indigo-900/30'
-                      : 'border-zinc-700/60 bg-zinc-800/60 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-800'
-                  }`}
                 >
                   {os.label}
-                </button>
+                </PixelSelectButton>
               ))}
             </div>
 
-            {/* Bulk: use own VM as template */}
             {isBulk && (
               <div className="mt-5">
                 <div className="mb-2 flex items-center gap-2">
@@ -583,29 +610,26 @@ function CreatePageContent() {
                 ) : (
                   <div className="flex flex-col gap-2">
                     {userVms.map((vm) => (
-                      <button
+                      <PixelSelectButton
                         key={vm.vmid}
-                        type="button"
+                        selected={selectedSourceVmid === vm.vmid}
                         onClick={() => {
                           setSelectedSourceVmid(vm.vmid)
                           setSelectedOs(vm.os)
                         }}
-                        className={`flex items-center justify-between rounded-lg border px-4 py-3 text-sm transition-all duration-150 active:scale-95 ${
-                          selectedSourceVmid === vm.vmid
-                            ? 'border-amber-600/60 bg-amber-950/30 text-amber-300'
-                            : 'border-zinc-700/60 bg-zinc-800/60 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-800'
-                        }`}
                       >
-                        <span className="flex flex-col items-start gap-0.5">
-                          <span className="font-medium">{vm.name || `VM ${vm.vmid}`}</span>
-                          <span className="text-xs text-zinc-500">
-                            {vm.os} · {vm.cpu_cores}C / {vm.ram_gb}GB · {vm.ip ?? '—'}
+                        <span className="flex items-center justify-between w-full gap-4">
+                          <span className="flex flex-col items-start gap-0.5">
+                            <span className="font-medium">{vm.name || `VM ${vm.vmid}`}</span>
+                            <span className="text-xs opacity-70">
+                              {vm.os} · {vm.cpu_cores}C / {vm.ram_gb}GB · {vm.ip ?? '—'}
+                            </span>
+                          </span>
+                          <span className="text-xs font-medium opacity-70">
+                            {selectedSourceVmid === vm.vmid ? 'Selected' : 'Use as template'}
                           </span>
                         </span>
-                        <span className={`text-xs font-medium ${selectedSourceVmid === vm.vmid ? 'text-amber-400' : 'text-zinc-600'}`}>
-                          {selectedSourceVmid === vm.vmid ? 'Selected' : 'Use as template'}
-                        </span>
-                      </button>
+                      </PixelSelectButton>
                     ))}
                   </div>
                 )}
@@ -625,32 +649,31 @@ function CreatePageContent() {
           <div>
             <h2 className="mb-4 text-lg font-semibold text-zinc-100">How many CPU cores?</h2>
             <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setCpuCores((v) => Math.max(1, v - 1))}
+              <PButton
+                variant="secondary"
+                customInnerClass="py-2"
                 disabled={cpuCores <= 1}
-                className="flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-200 transition-all duration-150 hover:border-zinc-600 hover:bg-zinc-700 active:scale-95 disabled:opacity-40"
+                onClick={() => setCpuCores((v) => Math.max(1, v - 1))}
               >
                 −
-              </button>
-              <input
+              </PButton>
+              <PInput
                 type="number"
-                value={cpuCores}
-                min={1}
-                max={maxCpu}
+                value={String(cpuCores)}
                 onChange={(e) =>
                   setCpuCores(Math.min(maxCpu, Math.max(1, parseInt(e.target.value) || 1)))
                 }
-                className="w-24 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-center text-lg font-semibold text-zinc-100 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+                minWidth="6rem"
+                className="text-center"
               />
-              <button
-                type="button"
-                onClick={() => setCpuCores((v) => Math.min(maxCpu, v + 1))}
+              <PButton
+                variant="secondary"
+                customInnerClass="py-2"
                 disabled={cpuCores >= maxCpu}
-                className="flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-200 transition-all duration-150 hover:border-zinc-600 hover:bg-zinc-700 active:scale-95 disabled:opacity-40"
+                onClick={() => setCpuCores((v) => Math.min(maxCpu, v + 1))}
               >
                 +
-              </button>
+              </PButton>
               <span className="text-sm text-zinc-500">{maxCpu} available</span>
             </div>
             {cpuPct >= 80 && (
@@ -665,19 +688,14 @@ function CreatePageContent() {
             <h2 className="mb-4 text-lg font-semibold text-zinc-100">How much RAM?</h2>
             <div className="flex flex-wrap gap-2">
               {RAM_OPTIONS.map((gb) => (
-                <button
+                <PixelSelectButton
                   key={gb}
-                  type="button"
-                  onClick={() => setRamGb(gb)}
+                  selected={ramGb === gb}
                   disabled={gb > maxRam}
-                  className={`rounded-lg border px-5 py-2 text-sm font-medium transition-all duration-150 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 ${
-                    ramGb === gb
-                      ? 'border-indigo-600/60 bg-indigo-950/60 text-indigo-300 shadow-sm shadow-indigo-900/30'
-                      : 'border-zinc-700/60 bg-zinc-800/60 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-800'
-                  }`}
+                  onClick={() => setRamGb(gb)}
                 >
                   {gb} GB
-                </button>
+                </PixelSelectButton>
               ))}
             </div>
             {ramPct >= 80 && (
@@ -692,7 +710,7 @@ function CreatePageContent() {
             <h2 className="mb-4 text-lg font-semibold text-zinc-100">How much disk space?</h2>
             <div className="mb-2 flex items-center justify-between">
               <span className="text-sm text-zinc-500">Storage</span>
-              <span className="rounded-md border border-zinc-700 bg-zinc-800 px-3 py-1 text-sm font-semibold text-zinc-200">
+              <span className="border border-zinc-700 bg-zinc-800 px-3 py-1 text-sm font-semibold text-zinc-200">
                 {diskGb} GB
               </span>
             </div>
@@ -720,39 +738,34 @@ function CreatePageContent() {
           <div>
             <h2 className="mb-4 text-lg font-semibold text-zinc-100">Add a GPU?</h2>
             <div className="mb-4 flex items-center gap-3">
-              <button
-                type="button"
-                role="switch"
-                aria-checked={hasGpu}
-                onClick={() => {
-                  setHasGpu((v) => !v)
-                  if (hasGpu) setSelectedGpu('')
+              <PToggleButton
+                checked={hasGpu}
+                onChange={(v) => {
+                  setHasGpu(v)
+                  if (!v) setSelectedGpu('')
                 }}
-                className={`relative h-6 w-11 rounded-full transition-colors duration-200 focus:outline-none ${
-                  hasGpu ? 'bg-indigo-600' : 'bg-zinc-700'
-                }`}
-              >
-                <span
-                  className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
-                    hasGpu ? 'translate-x-5' : 'translate-x-0'
-                  }`}
-                />
-              </button>
-              <span className="text-sm text-zinc-300">{hasGpu ? 'Yes, add a GPU' : 'No GPU'}</span>
+                leftLabel="No GPU"
+                rightLabel="Add GPU"
+              />
             </div>
             {hasGpu && (
-              <select
-                value={selectedGpu}
-                onChange={(e) => setSelectedGpu(e.target.value)}
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
-              >
-                <option value="">Select GPU...</option>
-                {availableGpus.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.name}
-                  </option>
-                ))}
-              </select>
+              <div className="border-b-2 border-r-2 border-zinc-600 bg-zinc-600 pixel-panel-outer">
+                <select
+                  value={selectedGpu}
+                  onChange={(e) => setSelectedGpu(e.target.value)}
+                  className="border-2 border-zinc-400 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 w-full pixel-panel-inner outline-none"
+                  style={{
+                    clipPath: 'polygon(0 4px, 4px 4px, 4px 0, calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px), 0 calc(100% - 4px))'
+                  }}
+                >
+                  <option value="">Select GPU...</option>
+                  {availableGpus.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             )}
           </div>
         )
@@ -763,18 +776,13 @@ function CreatePageContent() {
             <h2 className="mb-4 text-lg font-semibold text-zinc-100">How long do you need it?</h2>
             <div className="flex flex-wrap gap-2">
               {DURATION_OPTIONS.map((d) => (
-                <button
+                <PixelSelectButton
                   key={d.hours}
-                  type="button"
+                  selected={durationHours === d.hours}
                   onClick={() => setDurationHours(d.hours)}
-                  className={`rounded-lg border px-6 py-2 text-sm font-medium transition-all duration-150 active:scale-95 ${
-                    durationHours === d.hours
-                      ? 'border-indigo-600/60 bg-indigo-950/60 text-indigo-300 shadow-sm shadow-indigo-900/30'
-                      : 'border-zinc-700/60 bg-zinc-800/60 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-800'
-                  }`}
                 >
                   {d.label}
-                </button>
+                </PixelSelectButton>
               ))}
             </div>
           </div>
@@ -791,37 +799,36 @@ function CreatePageContent() {
                 Number of VMs
               </label>
               <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setVmCount((v) => Math.max(1, v - 1))}
+                <PButton
+                  variant="secondary"
+                  customInnerClass="py-2"
                   disabled={vmCount <= 1}
-                  className="flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-200 transition-all hover:border-zinc-600 hover:bg-zinc-700 active:scale-95 disabled:opacity-40"
+                  onClick={() => setVmCount((v) => Math.max(1, v - 1))}
                 >
-                  <Minus className="h-4 w-4" />
-                </button>
-                <input
+                  −
+                </PButton>
+                <PInput
                   type="number"
-                  value={vmCount}
-                  min={1}
-                  max={50}
+                  value={String(vmCount)}
                   onChange={(e) => setVmCount(Math.min(50, Math.max(1, parseInt(e.target.value) || 1)))}
-                  className="w-24 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-center text-lg font-semibold text-zinc-100 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+                  minWidth="6rem"
+                  className="text-center"
                 />
-                <button
-                  type="button"
-                  onClick={() => setVmCount((v) => Math.min(50, v + 1))}
+                <PButton
+                  variant="secondary"
+                  customInnerClass="py-2"
                   disabled={vmCount >= 50}
-                  className="flex h-10 w-10 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-800 text-zinc-200 transition-all hover:border-zinc-600 hover:bg-zinc-700 active:scale-95 disabled:opacity-40"
+                  onClick={() => setVmCount((v) => Math.min(50, v + 1))}
                 >
-                  <Plus className="h-4 w-4" />
-                </button>
+                  +
+                </PButton>
                 <span className="text-sm text-zinc-500">max 50</span>
               </div>
             </div>
 
             {/* Resource summary */}
             {resources && (
-              <div className="mb-5 rounded-lg border border-zinc-800 bg-zinc-800/40 p-3 text-xs flex flex-col gap-1.5">
+              <div className="mb-5 border border-zinc-700 bg-zinc-800/40 p-3 text-xs flex flex-col gap-1.5">
                 {[
                   { label: 'CPU',  needed: totalCpuNeeded,  available: resources.cpu.available,     unit: 'cores' },
                   { label: 'RAM',  needed: totalRamNeeded,  available: resources.ram_gb.available,  unit: 'GB' },
@@ -847,40 +854,35 @@ function CreatePageContent() {
                 Password assignment
               </label>
               <div className="flex flex-col gap-2 sm:flex-row">
-                <button
-                  type="button"
+                <PixelSelectButton
+                  selected={passwordMode === 'random'}
                   onClick={() => setPasswordMode('random')}
-                  className={`flex-1 rounded-lg border px-4 py-3 text-left text-sm transition-all active:scale-95 ${
-                    passwordMode === 'random'
-                      ? 'border-indigo-600/60 bg-indigo-950/60 text-indigo-300'
-                      : 'border-zinc-700/60 bg-zinc-800/60 text-zinc-300 hover:border-zinc-600'
-                  }`}
                 >
-                  <div className="font-medium">Random per VM</div>
-                  <div className="mt-0.5 text-xs opacity-70">Each VM gets a unique random password</div>
-                </button>
-                <button
-                  type="button"
+                  <span className="flex flex-col items-start gap-0.5">
+                    <span className="font-medium">Random per VM</span>
+                    <span className="text-xs opacity-70">Each VM gets a unique random password</span>
+                  </span>
+                </PixelSelectButton>
+                <PixelSelectButton
+                  selected={passwordMode === 'unified'}
                   onClick={() => setPasswordMode('unified')}
-                  className={`flex-1 rounded-lg border px-4 py-3 text-left text-sm transition-all active:scale-95 ${
-                    passwordMode === 'unified'
-                      ? 'border-indigo-600/60 bg-indigo-950/60 text-indigo-300'
-                      : 'border-zinc-700/60 bg-zinc-800/60 text-zinc-300 hover:border-zinc-600'
-                  }`}
                 >
-                  <div className="font-medium">Unified password</div>
-                  <div className="mt-0.5 text-xs opacity-70">All VMs share one password</div>
-                </button>
+                  <span className="flex flex-col items-start gap-0.5">
+                    <span className="font-medium">Unified password</span>
+                    <span className="text-xs opacity-70">All VMs share one password</span>
+                  </span>
+                </PixelSelectButton>
               </div>
 
               {passwordMode === 'unified' && (
                 <div className="mt-3">
-                  <input
+                  <PInput
                     type="text"
                     value={unifiedPassword}
                     onChange={(e) => setUnifiedPassword(e.target.value)}
                     placeholder="Enter password (min 8 characters)"
-                    className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 font-mono placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+                    className="w-full"
+                    minWidth="100%"
                   />
                   {unifiedPassword.length > 0 && unifiedPassword.length < 8 && (
                     <p className="mt-1 text-xs text-red-400">Password must be at least 8 characters.</p>
@@ -895,34 +897,36 @@ function CreatePageContent() {
         return (
           <div>
             <h2 className="mb-4 text-lg font-semibold text-zinc-100">Review your configuration</h2>
-            <dl className="flex flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-800/40 p-4 text-sm">
-              {[
-                {
-                  label: isBulk ? 'Template' : 'OS',
-                  value: selectedSourceVmid !== null
-                    ? `Your VM (vmid ${selectedSourceVmid})`
-                    : OS_OPTIONS.find((o) => o.id === selectedOs)?.label ?? selectedOs,
-                },
-                { label: 'CPU',      value: `${cpuCores} cores` },
-                { label: 'RAM',      value: `${ramGb} GB` },
-                { label: 'Disk',     value: `${diskGb} GB` },
-                ...(isBulk
-                  ? [
-                      { label: 'VM Count',  value: `${vmCount} VMs` },
-                      { label: 'Passwords', value: passwordMode === 'unified' ? 'Unified' : 'Random per VM' },
-                    ]
-                  : [
-                      { label: 'GPU', value: hasGpu ? (selectedGpu || '—') : 'None' },
-                    ]
-                ),
-                { label: 'Duration', value: DURATION_OPTIONS.find((d) => d.hours === durationHours)?.label ?? `${durationHours}h` },
-              ].map(({ label, value }) => (
-                <div key={label} className="flex items-center justify-between">
-                  <dt className="text-zinc-500">{label}</dt>
-                  <dd className="font-medium text-zinc-200">{value}</dd>
-                </div>
-              ))}
-            </dl>
+            <div className="border-b-4 border-r-4 border-zinc-600 bg-zinc-600 w-full pixel-panel-outer">
+              <dl className="border-4 border-zinc-400 bg-zinc-900/85 w-full pixel-panel-inner p-4 flex flex-col gap-3 text-sm">
+                {[
+                  {
+                    label: isBulk ? 'Template' : 'OS',
+                    value: selectedSourceVmid !== null
+                      ? `Your VM (vmid ${selectedSourceVmid})`
+                      : OS_OPTIONS.find((o) => o.id === selectedOs)?.label ?? selectedOs,
+                  },
+                  { label: 'CPU',      value: `${cpuCores} cores` },
+                  { label: 'RAM',      value: `${ramGb} GB` },
+                  { label: 'Disk',     value: `${diskGb} GB` },
+                  ...(isBulk
+                    ? [
+                        { label: 'VM Count',  value: `${vmCount} VMs` },
+                        { label: 'Passwords', value: passwordMode === 'unified' ? 'Unified' : 'Random per VM' },
+                      ]
+                    : [
+                        { label: 'GPU', value: hasGpu ? (selectedGpu || '—') : 'None' },
+                      ]
+                  ),
+                  { label: 'Duration', value: DURATION_OPTIONS.find((d) => d.hours === durationHours)?.label ?? `${durationHours}h` },
+                ].map(({ label, value }) => (
+                  <div key={label} className="flex items-center justify-between border-b border-zinc-800 pb-2 last:border-0 last:pb-0">
+                    <dt className="text-zinc-500">{label}</dt>
+                    <dd className="font-medium text-zinc-200">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
             {!canAfford && cost !== null && (
               <p className="mt-3 text-sm text-red-400">Insufficient points to create {isBulk ? 'these VMs' : 'this VM'}.</p>
             )}
@@ -970,15 +974,15 @@ function CreatePageContent() {
                   <button
                     type="button"
                     onClick={() => i < stepIndex && setStepIndex(i)}
-                    className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-colors ${
+                    className={`flex h-7 w-7 items-center justify-center text-xs font-semibold border-2 transition-colors ${
                       i === stepIndex
-                        ? 'bg-indigo-600 text-white'
+                        ? 'border-indigo-400 bg-indigo-700 text-white'
                         : i < stepIndex
-                        ? 'cursor-pointer bg-indigo-950 text-indigo-400 hover:bg-indigo-900'
-                        : 'bg-zinc-800 text-zinc-600'
+                        ? 'cursor-pointer border-indigo-700 bg-indigo-950 text-indigo-400 hover:bg-indigo-900'
+                        : 'border-zinc-700 bg-zinc-800 text-zinc-600'
                     }`}
                   >
-                    {i < stepIndex ? <Check className="h-3.5 w-3.5" /> : i + 1}
+                    {i < stepIndex ? '✓' : i + 1}
                   </button>
                   {i < visibleSteps.length - 1 && (
                     <div
@@ -993,130 +997,126 @@ function CreatePageContent() {
             </div>
 
             {/* Step content */}
-            <section className="animate-fade-in rounded-xl border border-zinc-800 bg-zinc-900/80 p-6 shadow-sm">
-              {StepContent()}
+            <section className="animate-fade-in border-b-4 border-r-4 border-zinc-600 bg-zinc-600 w-full pixel-panel-outer">
+              <div className="border-4 border-zinc-400 bg-zinc-900/85 w-full pixel-panel-inner p-6">
+                {StepContent()}
+              </div>
             </section>
 
             {/* Navigation */}
             <div className="flex items-center justify-between">
-              <button
-                type="button"
-                onClick={goBack}
+              <PButton
+                variant="secondary"
                 disabled={stepIndex === 0}
-                className="rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm text-zinc-300 transition-all duration-150 hover:border-zinc-600 hover:bg-zinc-700 active:scale-95 disabled:opacity-0"
+                className={stepIndex === 0 ? 'invisible' : ''}
+                onClick={goBack}
               >
-                <span className="inline-flex items-center gap-1.5">
-                  <ArrowLeft className="h-4 w-4" />
-                  Back
-                </span>
-              </button>
+                ← Back
+              </PButton>
 
               {currentStep.key === 'review' ? (
-                <button
-                  type="button"
-                  onClick={isBulk ? handleBulkCreate : handleCreate}
+                <PButton
+                  variant="primary"
                   disabled={!stepValid.review}
-                  className="rounded-lg bg-indigo-600 px-6 py-2 text-sm font-medium text-white shadow-sm shadow-indigo-900/40 transition-all duration-150 hover:bg-indigo-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={isBulk ? handleBulkCreate : handleCreate}
                 >
                   {isBulk ? `Create ${vmCount} VMs` : 'Create VM'}
-                </button>
+                </PButton>
               ) : (
-                <button
-                  type="button"
-                  onClick={goNext}
+                <PButton
+                  variant="primary"
                   disabled={!canNext}
-                  className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm shadow-indigo-900/40 transition-all duration-150 hover:bg-indigo-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={goNext}
                 >
-                  <span className="inline-flex items-center gap-1.5">
-                    Next
-                    <ArrowRight className="h-4 w-4" />
-                  </span>
-                </button>
+                  Next →
+                </PButton>
               )}
             </div>
           </div>
 
           {/* Cost Sidebar */}
           <div className="w-full lg:w-72 lg:shrink-0">
-            <div className="animate-fade-in stagger-2 sticky top-20 rounded-xl border border-zinc-800 bg-zinc-900/80 p-5 shadow-sm">
-              <h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-zinc-500">
-                Cost Summary
-              </h2>
+            <div className="animate-fade-in stagger-2 sticky top-20 border-b-4 border-r-4 border-zinc-600 bg-zinc-600 w-full pixel-panel-outer">
+              <div className="border-4 border-zinc-400 bg-zinc-900/85 w-full pixel-panel-inner p-5">
+                <h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-zinc-500">
+                  Cost Summary
+                </h2>
 
-              <dl className="flex flex-col gap-2.5 text-sm">
-                {isBulk ? (
-                  <>
-                    <div className="flex justify-between">
-                      <dt className="text-zinc-500">Per VM</dt>
-                      <dd className="font-semibold text-zinc-400">
-                        {singleCost !== null ? `${singleCost.toLocaleString()} pts` : '—'}
-                      </dd>
-                    </div>
-                    <div className="flex justify-between">
-                      <dt className="text-zinc-300">× {vmCount} VMs</dt>
-                      <dd className="font-semibold text-zinc-100">
-                        {cost !== null ? `${cost.toLocaleString()} pts` : '—'}
-                      </dd>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex justify-between">
-                      <dt className="text-zinc-300">Required</dt>
-                      <dd className="font-semibold text-zinc-100">
-                        {cost !== null ? `${cost.toLocaleString()} pts` : '—'}
-                      </dd>
-                    </div>
-                    <div className="flex justify-between">
-                      <dt className="text-zinc-500">CPU</dt>
-                      <dd className="font-semibold text-zinc-400">
-                        {`${cpuCores * (pricing?.price_cpu || 0) * durationHours} pts`}
-                      </dd>
-                    </div>
-                    <div className="flex justify-between">
-                      <dt className="text-zinc-500">RAM</dt>
-                      <dd className="font-semibold text-zinc-400">
-                        {`${ramGb * (pricing?.price_ram || 0) * durationHours} pts`}
-                      </dd>
-                    </div>
-                    <div className="flex justify-between">
-                      <dt className="text-zinc-500">Disk</dt>
-                      <dd className="font-semibold text-zinc-400">
-                        {`${diskGb * (pricing?.price_disk || 0) * durationHours} pts`}
-                      </dd>
-                    </div>
-                  </>
-                )}
-                <div className="flex justify-between">
-                  <dt className="text-zinc-300">Your balance</dt>
-                  <dd className="font-semibold text-zinc-100">
-                    {balance.toLocaleString()} pts
-                  </dd>
-                </div>
-                <div className="my-1 border-t border-zinc-800" />
-                <div className="flex justify-between">
-                  <dt className="text-zinc-300">After purchase</dt>
-                  <dd
-                    className={`font-bold ${
-                      remaining === null
-                        ? 'text-zinc-500'
-                        : remaining < 0
-                        ? 'text-red-400'
-                        : 'text-emerald-400'
-                    }`}
-                  >
-                    {remaining !== null ? `${remaining.toLocaleString()} pts` : '—'}
-                  </dd>
-                </div>
-              </dl>
+                <dl className="flex flex-col gap-2.5 text-sm">
+                  {isBulk ? (
+                    <>
+                      <div className="flex justify-between">
+                        <dt className="text-zinc-500">Per VM</dt>
+                        <dd className="font-semibold text-zinc-400">
+                          {singleCost !== null ? `${singleCost.toLocaleString()} pts` : '—'}
+                        </dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-zinc-300">× {vmCount} VMs</dt>
+                        <dd className="font-semibold text-zinc-100">
+                          {cost !== null ? `${cost.toLocaleString()} pts` : '—'}
+                        </dd>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex justify-between">
+                        <dt className="text-zinc-300">Required</dt>
+                        <dd className="font-semibold text-zinc-100">
+                          {cost !== null ? `${cost.toLocaleString()} pts` : '—'}
+                        </dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-zinc-500">CPU</dt>
+                        <dd className="font-semibold text-zinc-400">
+                          {`${cpuCores * (pricing?.price_cpu || 0) * durationHours} pts`}
+                        </dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-zinc-500">RAM</dt>
+                        <dd className="font-semibold text-zinc-400">
+                          {`${ramGb * (pricing?.price_ram || 0) * durationHours} pts`}
+                        </dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-zinc-500">Disk</dt>
+                        <dd className="font-semibold text-zinc-400">
+                          {`${diskGb * (pricing?.price_disk || 0) * durationHours} pts`}
+                        </dd>
+                      </div>
+                    </>
+                  )}
+                  <div className="flex justify-between">
+                    <dt className="text-zinc-300">Your balance</dt>
+                    <dd className="font-semibold text-zinc-100">
+                      {balance.toLocaleString()} pts
+                    </dd>
+                  </div>
+                  <div className="my-1 border-t border-zinc-700" />
+                  <div className="flex justify-between">
+                    <dt className="text-zinc-300">After purchase</dt>
+                    <dd
+                      className={`font-bold ${
+                        remaining === null
+                          ? 'text-zinc-500'
+                          : remaining < 0
+                          ? 'text-red-400'
+                          : 'text-emerald-400'
+                      }`}
+                    >
+                      {remaining !== null ? `${remaining.toLocaleString()} pts` : '—'}
+                    </dd>
+                  </div>
+                </dl>
 
-              <div className="mt-3 flex flex-col gap-1">
-                {cpuPct >= 80 && <p className="text-xs text-amber-400">Warning: CPU at {cpuPct.toFixed(0)}%</p>}
-                {ramPct >= 80 && <p className="text-xs text-amber-400">Warning: RAM at {ramPct.toFixed(0)}%</p>}
-                {diskPct >= 80 && <p className="text-xs text-amber-400">Warning: Disk at {diskPct.toFixed(0)}%</p>}
-                {!canAfford && cost !== null && (
-                  <p className="text-xs text-red-400">Insufficient points.</p>
-                )}
+                <div className="mt-3 flex flex-col gap-1">
+                  {cpuPct >= 80 && <p className="text-xs text-amber-400">Warning: CPU at {cpuPct.toFixed(0)}%</p>}
+                  {ramPct >= 80 && <p className="text-xs text-amber-400">Warning: RAM at {ramPct.toFixed(0)}%</p>}
+                  {diskPct >= 80 && <p className="text-xs text-amber-400">Warning: Disk at {diskPct.toFixed(0)}%</p>}
+                  {!canAfford && cost !== null && (
+                    <p className="text-xs text-red-400">Insufficient points.</p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -1124,7 +1124,7 @@ function CreatePageContent() {
       </div>
 
       {/* Mobile cost bar */}
-      <div className="fixed bottom-0 left-0 right-0 border-t border-zinc-800 bg-zinc-900/95 px-4 py-3 backdrop-blur-md lg:hidden">
+      <div className="fixed bottom-0 left-0 right-0 border-t-2 border-zinc-700 bg-zinc-900/95 px-4 py-3 backdrop-blur-md lg:hidden">
         <div className="flex items-center justify-between">
           <div className="text-sm">
             <span className="text-zinc-500">Cost: </span>
@@ -1134,35 +1134,26 @@ function CreatePageContent() {
           </div>
           <div className="flex gap-2">
             {stepIndex > 0 && (
-              <button
-                type="button"
-                onClick={goBack}
-                className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-300 transition-all active:scale-95"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
+              <PButton variant="secondary" customInnerClass="py-2" onClick={goBack}>
+                ←
+              </PButton>
             )}
             {currentStep.key === 'review' ? (
-              <button
-                type="button"
-                onClick={isBulk ? handleBulkCreate : handleCreate}
+              <PButton
+                variant="primary"
                 disabled={!stepValid.review}
-                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm shadow-indigo-900/40 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={isBulk ? handleBulkCreate : handleCreate}
               >
                 {isBulk ? `Create ${vmCount} VMs` : 'Create VM'}
-              </button>
+              </PButton>
             ) : (
-              <button
-                type="button"
-                onClick={goNext}
+              <PButton
+                variant="primary"
                 disabled={!canNext}
-                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm shadow-indigo-900/40 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={goNext}
               >
-                <span className="inline-flex items-center gap-1.5">
-                  Next
-                  <ArrowRight className="h-4 w-4" />
-                </span>
-              </button>
+                Next →
+              </PButton>
             )}
           </div>
         </div>
@@ -1201,7 +1192,7 @@ export default function CreatePage() {
     <Suspense
       fallback={
         <div className="flex flex-1 items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-zinc-700 border-t-indigo-500" />
+          <PixelSpinner color="bg-indigo-400" size={10} />
         </div>
       }
     >

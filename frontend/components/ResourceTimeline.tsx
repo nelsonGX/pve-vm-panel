@@ -33,7 +33,7 @@ const STATUS_COLOR: Record<string, string> = {
 
 function Initials({ name }: { name: string }) {
   return (
-    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-900 text-xs font-bold text-indigo-300">
+    <div className="flex h-7 w-7 shrink-0 items-center justify-center bg-indigo-900 text-xs font-bold text-indigo-300">
       {name.slice(0, 2).toUpperCase()}
     </div>
   )
@@ -78,13 +78,13 @@ export default function ResourceTimeline() {
 
   if (loading) {
     return (
-      <div className="h-24 animate-pulse rounded-xl bg-zinc-800/50" />
+      <div className="h-24 animate-pulse bg-zinc-800/50" />
     )
   }
 
   if (!data || data.vms.length === 0) {
     return (
-      <p className="rounded-xl border border-zinc-800 bg-zinc-900/80 px-5 py-4 text-sm text-zinc-600">
+      <p className="border border-zinc-800 bg-zinc-900/80 px-5 py-4 text-sm text-zinc-600">
         No active VMs to display.
       </p>
     )
@@ -123,13 +123,14 @@ export default function ResourceTimeline() {
         </h2>
         <button
           onClick={fetchData}
-          className="rounded-md border border-zinc-700 bg-zinc-800 px-2.5 py-1 text-xs text-zinc-400 transition-all duration-150 hover:border-zinc-600 hover:bg-zinc-700 active:scale-95"
+          className="border border-zinc-700 bg-zinc-800 px-2.5 py-1 text-xs text-zinc-400 transition-all duration-150 hover:border-zinc-600 hover:bg-zinc-700"
         >
           Refresh
         </button>
       </div>
 
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/80 p-4 shadow-sm">
+      <div className="border-b-4 border-r-4 border-zinc-600 bg-zinc-600 w-full pixel-panel-outer">
+      <div className="border-4 border-zinc-400 bg-zinc-900/85 w-full pixel-panel-inner p-4">
         {/* Time axis */}
         <div className="relative mb-2 ml-[192px] h-5">
           {ticks.map((tick, i) => {
@@ -169,7 +170,7 @@ export default function ResourceTimeline() {
                       alt={vm.user.username}
                       width={28}
                       height={28}
-                      className="rounded-full"
+                      className=""
                       unoptimized
                     />
                   ) : (
@@ -212,7 +213,7 @@ export default function ResourceTimeline() {
                   {/* VM duration bar */}
                   {barWidth > 0 && (
                     <div
-                      className={`absolute top-1.5 bottom-1.5 rounded ${color} opacity-75 transition-all`}
+                      className={`absolute top-1.5 bottom-1.5 ${color} opacity-75 transition-all`}
                       style={{ left: `${barLeft}%`, width: `${barWidth}%` }}
                       title={`${vm.user.username} — expires ${formatDate(expires)}`}
                     />
@@ -226,18 +227,19 @@ export default function ResourceTimeline() {
         {/* Legend */}
         <div className="mt-3 ml-[192px] flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-1.5">
-            <div className="h-2.5 w-4 rounded-sm bg-indigo-500 opacity-75" />
+            <div className="h-2.5 w-4 bg-indigo-500 opacity-75" />
             <span className="text-[10px] text-zinc-500">Running</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="h-2.5 w-4 rounded-sm bg-amber-500 opacity-75" />
+            <div className="h-2.5 w-4 bg-amber-500 opacity-75" />
             <span className="text-[10px] text-zinc-500">Provisioning</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="h-3.5 w-0.5 rounded-sm bg-red-500/80" />
+            <div className="h-3.5 w-0.5 bg-red-500/80" />
             <span className="text-[10px] text-zinc-500">Now</span>
           </div>
         </div>
+      </div>
       </div>
     </div>
   )
