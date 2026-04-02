@@ -180,7 +180,6 @@ function CreatePageContent() {
   const [bulkCredentials, setBulkCredentials] = useState<BulkCredential[]>([])
   const [bulkErrors, setBulkErrors] = useState<{ vm_index: number; message: string }[]>([])
   const [bulkFatalError, setBulkFatalError] = useState<string | null>(null)
-  const [bulkIsDone, setBulkIsDone] = useState(false)
 
   // ---------------------------------------------------------------------------
   // Load initial data
@@ -423,7 +422,6 @@ function CreatePageContent() {
     setBulkCredentials([])
     setBulkErrors([])
     setBulkFatalError(null)
-    setBulkIsDone(false)
     setBulkModalOpen(true)
 
     const payload = {
@@ -516,7 +514,6 @@ function CreatePageContent() {
               { vm_index: idx, message: event.message as string },
             ])
           } else if (event.type === 'complete') {
-            setBulkIsDone(true)
             break outer
           } else if (event.type === 'error') {
             throw new Error(event.message as string)
@@ -526,7 +523,6 @@ function CreatePageContent() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Bulk provisioning failed'
       setBulkFatalError(msg)
-      setBulkIsDone(true)
     }
   }
 

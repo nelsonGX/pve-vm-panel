@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import { ChevronRight, Plus } from 'lucide-react'
 import { clientApiFetch } from '@/lib/api'
 import VMCard, { type VM } from '@/components/VMCard'
 import ConfirmDialog from '@/components/ConfirmDialog'
@@ -35,11 +36,9 @@ function BulkGroup({ bulkId, vms, onDeleteGroup, onDeleteVm }: BulkGroupProps) {
           onClick={() => setExpanded((v) => !v)}
           className="flex flex-1 items-center gap-2.5 text-left"
         >
-          <span
-            className={`text-xs transition-transform duration-150 ${expanded ? 'rotate-90' : ''}`}
-          >
-            ▶
-          </span>
+          <ChevronRight
+            className={`h-4 w-4 text-zinc-400 transition-transform duration-150 ${expanded ? 'rotate-90' : ''}`}
+          />
           <span className="font-mono text-xs text-zinc-500">{shortId}</span>
           <span className="text-sm font-medium text-zinc-200">
             Bulk Group
@@ -217,9 +216,10 @@ export default function VMsPage() {
           </Link>
           <Link
             href="/create"
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm shadow-indigo-900/40 transition-all duration-150 hover:bg-indigo-500 active:scale-95"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm shadow-indigo-900/40 transition-all duration-150 hover:bg-indigo-500 active:scale-95"
           >
-            + Create VM
+            <Plus className="h-4 w-4" />
+            Create VM
           </Link>
         </div>
       </div>
