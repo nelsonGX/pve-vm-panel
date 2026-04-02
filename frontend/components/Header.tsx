@@ -45,12 +45,15 @@ export default function Header() {
             >
               Dashboard
             </Link>
-            <Link
-              href="/vms"
-              className="px-3 py-1.5 text-lg text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100 border border-transparent hover:border-zinc-700"
-            >
-              My VMs
-            </Link>
+            {
+              session && (
+              <Link
+                href="/vms"
+                className="px-3 py-1.5 text-lg text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100 border border-transparent hover:border-zinc-700"
+              >
+                My VMs
+              </Link>)
+            }
           </nav>
         </div>
 

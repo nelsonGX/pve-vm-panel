@@ -130,13 +130,13 @@ export default async function HomePage() {
       ) : (
         <section className="animate-fade-in stagger-3">
           <PDiv fullWidth padding="p-10">
-            <div className="text-center">
+            <div className="flex flex-col items-center gap-4">
               <p className="mb-5 text-zinc-400">
                 Sign in with Discord to view cluster activity and start spinning up VMs.
               </p>
               <Link href="/login">
                 <PDiv animated shadowColor="blue-700" borderColor="blue-400" padding="px-6 py-2.5">
-                  <span className="text-sm font-medium text-blue-200">Login with Discord</span>
+                  <span className="text-md font-medium">Login with Discord</span>
                 </PDiv>
               </Link>
             </div>
