@@ -135,7 +135,8 @@ export default function BulkProvisioningModal({
     if (!open || credentials.length === 0 || shownCredentialsToastRef.current) return
     shownCredentialsToastRef.current = true
     toast.warning("Save these credentials now. You won't be able to see them again.", {
-      autoClose: false,
+      autoClose: true,
+      autoCloseDelay: 7000,
     })
   }, [open, credentials.length])
 

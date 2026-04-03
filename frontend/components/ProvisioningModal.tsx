@@ -101,7 +101,8 @@ export default function ProvisioningModal({
     if (!open || !credentialKey || shownCredentialsRef.current === credentialKey) return
     shownCredentialsRef.current = credentialKey
     toast.warning("You won't be able to see these credentials again. Copy them somewhere safe.", {
-      autoClose: false,
+      autoClose: true,
+      autoCloseDelay: 5000,
     })
   }, [open, credentials])
 

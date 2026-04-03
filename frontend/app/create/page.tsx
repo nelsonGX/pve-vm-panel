@@ -306,7 +306,8 @@ function CreatePageContent() {
     const sourceSelected = selectedSourceVmid !== null
     if (sourceSelected && !warningToastStateRef.current.sourceSelected) {
       toast.warning('Your VM will be temporarily stopped, cloned to a template, then restarted.', {
-        autoClose: false,
+        autoClose: true,
+        autoCloseDelay: 5000
       })
     }
     warningToastStateRef.current.sourceSelected = sourceSelected
@@ -708,7 +709,7 @@ function CreatePageContent() {
               >
                 +
               </PButton>
-              <span className="text-sm text-zinc-500">{maxCpu} available</span>
+              <span className="shrink-0 text-sm text-zinc-500">{maxCpu} avail.</span>
             </div>
           </div>
         )
@@ -1003,7 +1004,7 @@ function CreatePageContent() {
   // ---------------------------------------------------------------------------
   return (
     <>
-      <div className="mx-auto w-full max-w-5xl px-4 py-8">
+      <div className="mx-auto w-full max-w-5xl px-4 py-8 pb-24 lg:pb-8">
         <h1 className="animate-fade-in mb-6 text-2xl font-bold text-zinc-100">
           {isBulk ? 'Bulk Create VMs' : 'Create VM'}
         </h1>
@@ -1012,13 +1013,13 @@ function CreatePageContent() {
           {/* Wizard */}
           <div className="flex flex-1 flex-col gap-5">
             {/* Step indicator */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5 overflow-x-auto pb-1 sm:gap-1 sm:pb-0">
               {visibleSteps.map((s, i) => (
-                <div key={s.key} className="flex items-center gap-1">
+                <div key={s.key} className="flex shrink-0 items-center gap-0.5 sm:gap-1">
                   <button
                     type="button"
                     onClick={() => i < stepIndex && setStepIndex(i)}
-                    className={`flex h-7 w-7 items-center justify-center text-xs font-semibold border-2 transition-colors ${
+                    className={`flex h-6 w-6 items-center justify-center text-xs font-semibold border-2 transition-colors sm:h-7 sm:w-7 ${
                       i === stepIndex
                         ? 'border-blue-400 bg-blue-700 text-white'
                         : i < stepIndex
@@ -1030,14 +1031,14 @@ function CreatePageContent() {
                   </button>
                   {i < visibleSteps.length - 1 && (
                     <div
-                      className={`h-px w-6 transition-colors ${
+                      className={`h-px w-3 shrink-0 transition-colors sm:w-6 ${
                         i < stepIndex ? 'bg-blue-700' : 'bg-zinc-800'
                       }`}
                     />
                   )}
                 </div>
               ))}
-              <span className="ml-2 text-xs text-zinc-500">{currentStep.label}</span>
+              <span className="ml-2 shrink-0 text-xs text-zinc-500">{currentStep.label}</span>
             </div>
 
             {/* Step content */}
@@ -1047,8 +1048,8 @@ function CreatePageContent() {
               </section>
             </PDiv>
 
-            {/* Navigation */}
-            <div className="flex items-center justify-between">
+            {/* Navigation — hidden on mobile (bottom bar handles it) */}
+            <div className="hidden items-center justify-between lg:flex">
               <PButton
                 variant="secondary"
                 disabled={stepIndex === 0}
@@ -1172,16 +1173,19 @@ function CreatePageContent() {
       {/* Mobile cost bar */}
       <div className="fixed bottom-0 left-0 right-0 border-t-2 border-zinc-700 bg-zinc-900/95 px-4 py-3 backdrop-blur-md lg:hidden">
         <div className="flex items-center justify-between">
-          <div className="text-sm">
-            <span className="text-zinc-500">Cost: </span>
-            <span className="font-bold text-zinc-100">
-              {cost !== null ? `${cost.toLocaleString()} pts` : '—'}
-            </span>
+          <div className="flex min-w-0 flex-col text-sm">
+            <span className="truncate text-xs text-zinc-500">{currentStep.label}</span>
+            <div>
+              <span className="text-zinc-500">Cost: </span>
+              <span className="font-bold text-zinc-100">
+                {cost !== null ? `${cost.toLocaleString()} pts` : '—'}
+              </span>
+            </div>
           </div>
           <div className="flex gap-2">
             {stepIndex > 0 && (
               <PButton variant="secondary" customInnerClass="py-2" onClick={goBack}>
-                ←
+                <ChevronsLeft />
               </PButton>
             )}
             {currentStep.key === 'review' ? (
@@ -1197,8 +1201,11 @@ function CreatePageContent() {
                 variant="primary"
                 disabled={!canNext}
                 onClick={goNext}
+                customInnerClass="py-1.5"
               >
-                Next →
+                <div className="flex items-center gap-1">
+                  Next <ChevronsRight />
+                </div>
               </PButton>
             )}
           </div>
