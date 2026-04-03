@@ -13,6 +13,7 @@ export interface ProvisioningStep {
   key?: string
   label: string
   status: StepStatus
+  progress?: number
 }
 
 export interface VMCredentials {
@@ -122,6 +123,13 @@ export default function ProvisioningModal({
             <p className="mb-4 text-sm text-zinc-500">This may take a minute...</p>
           )}
 
+          <style>{`
+            @keyframes prov_slide_in {
+              0%   { transform: translateY(100%); opacity: 0; }
+              100% { transform: translateY(0);    opacity: 1; }
+            }
+          `}</style>
+
           <div className="mb-6 flex flex-col gap-3">
             {steps.map((step, i) => (
               <div key={i} className="flex items-center gap-3">
@@ -134,6 +142,20 @@ export default function ProvisioningModal({
                 }`}>
                   {step.label}
                 </span>
+                {step.status === 'loading' && step.progress != null && (
+                  <span
+                    key={Math.floor(step.progress)}
+                    style={{
+                      fontSize: '0.75rem',
+                      color: '#956afa',
+                      animation: 'prov_slide_in 0.25s ease forwards',
+                      display: 'inline-block',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {Math.round(step.progress)}%
+                  </span>
+                )}
               </div>
             ))}
           </div>

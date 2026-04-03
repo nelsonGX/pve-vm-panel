@@ -298,7 +298,12 @@ async def create_vm(
             storage=settings.VM_STORAGE,
             target=settings.PVE_NODE,
         )
-        await pve_client.poll_task(clone_upid, timeout_seconds=300)
+
+        async def _on_single_clone_progress(pct: float) -> None:
+            if progress is not None:
+                await progress.put({"type": "clone_progress", "percent": pct})
+
+        await pve_client.poll_task(clone_upid, timeout_seconds=120, on_progress=_on_single_clone_progress)
         pve_vm_created = True
         await _emit(progress, "clone", "done")
 
@@ -579,7 +584,16 @@ async def _provision_vm_from_template(
             storage=settings.VM_STORAGE,
             target=settings.PVE_NODE,
         )
-        await pve_client.poll_task(clone_upid, timeout_seconds=600)
+
+        async def _on_clone_progress(pct: float) -> None:
+            if progress is not None:
+                await progress.put({
+                    "type": "vm_clone_progress",
+                    "vm_index": vm_index,
+                    "percent": pct,
+                })
+
+        await pve_client.poll_task(clone_upid, timeout_seconds=600, on_progress=_on_clone_progress)
         pve_vm_created = True
         await _emit_vm_step(progress, vm_index, "clone", "done")
 

@@ -17,6 +17,7 @@ export interface PrepStep {
 export interface BulkVMStatus {
   currentStep: string
   status: StepStatus
+  cloneProgress?: number
 }
 
 export interface BulkCredential {
@@ -70,6 +71,36 @@ const STEP_LABELS: Record<string, string> = {
   clone: 'Cloning',
   configure: 'Configuring',
   start: 'Starting',
+}
+
+function VMStepScroller({ currentStep }: { currentStep: string }) {
+  const label = STEP_LABELS[currentStep] ?? currentStep
+  return (
+    <span
+      style={{
+        display: 'inline-block',
+        overflow: 'hidden',
+        height: '1.1em',
+        verticalAlign: 'middle',
+        marginLeft: '4px',
+      }}
+    >
+      <span
+        key={currentStep}
+        style={{
+          display: 'block',
+          height: '1.1em',
+          lineHeight: '1.1em',
+          color: '#956afa',
+          animation: 'vm_step_slide_in 0.35s ease forwards',
+          whiteSpace: 'nowrap',
+          fontSize: '1rem',
+        }}
+      >
+        {label}
+      </span>
+    </span>
+  )
 }
 
 function CopyButton({ text }: { text: string }) {
@@ -152,6 +183,12 @@ export default function BulkProvisioningModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+      <style>{`
+        @keyframes vm_step_slide_in {
+          0%   { transform: translateY(100%); opacity: 0; }
+          100% { transform: translateY(0);    opacity: 1; }
+        }
+      `}</style>
       <div className="animate-scale-in w-full max-w-2xl" style={{ maxHeight: '90vh' }}>
         <PDiv fullWidth padding="p-0" innerClassName="flex flex-col overflow-hidden" style={{ maxHeight: '90vh' }}>
           <div className="shrink-0 border-b-2 border-zinc-700 p-6 pb-4">
@@ -226,8 +263,25 @@ export default function BulkProvisioningModal({
                       {STEP_ICON[vm.status]}
                       <span className="min-w-0 truncate">
                         <span className="font-medium text-zinc-300">VM {index + 1}</span>
-                        {vm.currentStep !== 'waiting' && (
-                          <span className="ml-1 text-xs text-zinc-500">
+                        {vm.status === 'loading' ? (
+                          <span className="inline-flex items-baseline gap-1">
+                            <VMStepScroller currentStep={vm.currentStep} />
+                            {vm.currentStep === 'clone' && vm.cloneProgress != null && (
+                              <span
+                                key={Math.floor(vm.cloneProgress)}
+                                style={{
+                                  fontSize: '0.7rem',
+                                  color: '#956afa',
+                                  animation: 'vm_step_slide_in 0.25s ease forwards',
+                                  display: 'inline-block',
+                                }}
+                              >
+                                {Math.round(vm.cloneProgress)}%
+                              </span>
+                            )}
+                          </span>
+                        ) : vm.currentStep !== 'waiting' && (
+                          <span className="ml-1 text-zinc-500">
                             {STEP_LABELS[vm.currentStep] ?? vm.currentStep}
                           </span>
                         )}

@@ -440,10 +440,14 @@ function CreatePageContent() {
             continue
           }
 
-          if (event.type === 'step') {
+          if (event.type === 'clone_progress') {
+            setSteps((prev) =>
+              prev.map((s) => s.key === 'clone' ? { ...s, progress: event.percent as number } : s),
+            )
+          } else if (event.type === 'step') {
             setSteps((prev) =>
               prev.map((s) =>
-                s.key === event.step ? { ...s, status: event.status as StepStatus } : s,
+                s.key === event.step ? { ...s, status: event.status as StepStatus, progress: undefined } : s,
               ),
             )
           } else if (event.type === 'complete') {
@@ -549,11 +553,18 @@ function CreatePageContent() {
                 s.key === event.step ? { ...s, status: event.status as StepStatus } : s,
               ),
             )
+          } else if (event.type === 'vm_clone_progress') {
+            const idx = event.vm_index as number
+            setBulkVmStatuses((prev) => {
+              const updated = [...prev]
+              updated[idx] = { ...updated[idx], cloneProgress: event.percent as number }
+              return updated
+            })
           } else if (event.type === 'vm_step') {
             const idx = event.vm_index as number
             setBulkVmStatuses((prev) => {
               const updated = [...prev]
-              updated[idx] = { currentStep: event.step as string, status: event.status as StepStatus }
+              updated[idx] = { currentStep: event.step as string, status: event.status as StepStatus, cloneProgress: undefined }
               return updated
             })
           } else if (event.type === 'vm_done') {

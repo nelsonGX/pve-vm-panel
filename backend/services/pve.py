@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import re
 import random
+from collections.abc import Callable, Coroutine
 from typing import Any
 
 import httpx
@@ -155,37 +157,94 @@ class PVEClient:
     # Task polling
     # ------------------------------------------------------------------ #
 
+    _TRANSFER_RE = re.compile(r'\((\d+(?:\.\d+)?)%\)')
+
     async def poll_task(
         self,
         upid: str,
         timeout_seconds: int = 300,
         poll_interval: float = 2.0,
+        on_progress: Callable[[float], Coroutine[Any, Any, None]] | None = None,
     ) -> str:
         """Poll a Proxmox task until it completes. Returns `exitstatus` string.
 
         Raises `PVEError` on task failure or timeout.
+
+        When `on_progress` is provided:
+        - The task log is polled each iteration for "transferred … (X%)" lines.
+        - `on_progress` is called with the latest percentage (0–100).
+        - `timeout_seconds` acts as an *idle* timeout: it resets whenever new
+          log lines appear, so an actively-cloning task will never be cut off.
+
+        Without `on_progress`, `timeout_seconds` is a hard total-elapsed cap.
         """
-        elapsed = 0.0
         node = self._node
-        encoded_upid = httpx.URL(upid).path if "/" in upid else upid
+        log_start = 0
+        loop = asyncio.get_event_loop()
 
-        while elapsed < timeout_seconds:
-            await asyncio.sleep(poll_interval)
-            elapsed += poll_interval
-            try:
-                data = await self._get(f"/nodes/{node}/tasks/{upid}/status")
-            except httpx.HTTPStatusError as exc:
-                raise PVEError(f"Failed to poll task {upid}: {exc}") from exc
+        if on_progress:
+            # Idle-timeout mode: track when we last saw new log activity.
+            last_activity = loop.time()
+            while True:
+                await asyncio.sleep(poll_interval)
+                now = loop.time()
 
-            status = data.get("status") if data else None
-            if status == "stopped":
-                exitstatus = data.get("exitstatus", "")
-                if exitstatus != "OK":
-                    raise PVEError(f"Task {upid} failed with exitstatus: {exitstatus!r}")
-                return exitstatus
-            # status == "running" → keep polling
+                try:
+                    data = await self._get(f"/nodes/{node}/tasks/{upid}/status")
+                except httpx.HTTPStatusError as exc:
+                    raise PVEError(f"Failed to poll task {upid}: {exc}") from exc
 
-        raise PVEError(f"Task {upid} timed out after {timeout_seconds}s")
+                try:
+                    log_data = await self._get(
+                        f"/nodes/{node}/tasks/{upid}/log",
+                        start=log_start,
+                        limit=200,
+                    )
+                    entries = log_data if isinstance(log_data, list) else (log_data or {}).get("data") or []
+                    latest_pct: float | None = None
+                    for entry in entries:
+                        line = entry.get("t", "")
+                        m = self._TRANSFER_RE.search(line)
+                        if m:
+                            latest_pct = float(m.group(1))
+                        entry_n = entry.get("n", 0)
+                        if entry_n > log_start:
+                            log_start = entry_n
+                            last_activity = now  # new log line → reset idle timer
+                    if latest_pct is not None:
+                        await on_progress(latest_pct)
+                except Exception:
+                    pass  # log polling is best-effort
+
+                status = data.get("status") if data else None
+                if status == "stopped":
+                    exitstatus = data.get("exitstatus", "")
+                    if exitstatus != "OK":
+                        raise PVEError(f"Task {upid} failed with exitstatus: {exitstatus!r}")
+                    return exitstatus
+
+                if now - last_activity > timeout_seconds:
+                    raise PVEError(f"Task {upid} timed out after {timeout_seconds}s of inactivity")
+        else:
+            # Hard-elapsed-timeout mode (original behaviour).
+            elapsed = 0.0
+            while elapsed < timeout_seconds:
+                await asyncio.sleep(poll_interval)
+                elapsed += poll_interval
+
+                try:
+                    data = await self._get(f"/nodes/{node}/tasks/{upid}/status")
+                except httpx.HTTPStatusError as exc:
+                    raise PVEError(f"Failed to poll task {upid}: {exc}") from exc
+
+                status = data.get("status") if data else None
+                if status == "stopped":
+                    exitstatus = data.get("exitstatus", "")
+                    if exitstatus != "OK":
+                        raise PVEError(f"Task {upid} failed with exitstatus: {exitstatus!r}")
+                    return exitstatus
+
+            raise PVEError(f"Task {upid} timed out after {timeout_seconds}s")
 
     # ------------------------------------------------------------------ #
     # VMID selection
