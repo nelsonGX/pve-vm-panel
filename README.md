@@ -4,6 +4,19 @@ This project is a small self-hosted VM panel for Proxmox VE.
 
 Users sign in with Discord, see available cluster resources, spend points to create VMs, manage their running machines, and redeem codes for more points. Admins can manage users, VMs, and redemption codes from the web UI.
 
+## Cool Screenshots
+Dashboard
+<img width="1293" height="936" alt="image" src="https://github.com/user-attachments/assets/5ffdac0f-10d7-4121-a552-98089579aa78" />
+My VMs
+<img width="1270" height="506" alt="image" src="https://github.com/user-attachments/assets/d1451bed-2c95-4fcf-a6da-cd0841ac77dd" />
+Create VM
+<img width="1272" height="514" alt="image" src="https://github.com/user-attachments/assets/462d7b0c-3484-4ab8-9e89-82977d995f12" />
+VM Provisioning
+<img width="545" height="329" alt="image" src="https://github.com/user-attachments/assets/c0b01e1a-2e64-432d-87b2-e399d85328af" />
+VM Created
+<img width="526" height="533" alt="image" src="https://github.com/user-attachments/assets/6b16830b-8995-41dc-9e0f-ac153e758b66" />
+
+
 ## What It Does
 
 - Discord login with NextAuth
