@@ -316,12 +316,13 @@ async def create_vm(
             move_upid = await pve_client.move_disk(vmid, "sata0", settings.VM_STORAGE)
             await pve_client.poll_task(move_upid, timeout_seconds=600)
 
-        # Step 4: Set CPU and RAM
+        # Step 4: Set CPU, RAM, and network bridge
         await pve_client.update_vm_config(
             vmid,
             cpu="host",
             cores=request.cpu_cores,
             memory=request.ram_gb * 1024,
+            net0=f"model=virtio,bridge={settings.VM_BRIDGE}",
         )
 
         # Step 5: Resize disk
@@ -611,6 +612,7 @@ async def _provision_vm_from_template(
             cpu="host",
             cores=request.cpu_cores,
             memory=request.ram_gb * 1024,
+            net0=f"model=virtio,bridge={settings.VM_BRIDGE}",
         )
         await pve_client.resize_disk(vmid, "sata0", f"{request.disk_gb}G")
         cloudinit_cfg: dict = dict(
