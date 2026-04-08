@@ -69,6 +69,14 @@ class Settings(BaseSettings):
     # Admin Discord IDs (comma-separated in env)
     ADMIN_DISCORD_IDS: list[str] = []
 
+    # VPN
+    NEED_VPN: bool = False
+    VPN_SUBNET: str = "10.100.0.0/24"
+    VPN_SERVER_ENDPOINT: str = ""   # e.g. "vpn.example.com:51820"
+    VPN_SERVER_PUBLIC_KEY: str = "" # WireGuard public key of the proxy server
+    VPN_DNS: str = "1.1.1.1"
+    VPN_DAEMON_SECRET: str = ""     # Shared secret for the proxy-daemon sync endpoint
+
     # ------------------------------------------------------------------ #
     # Validators
     # ------------------------------------------------------------------ #

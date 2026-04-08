@@ -1,0 +1,18 @@
+[Unit]
+Description=pve-vm-panel WireGuard proxy daemon
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/wg-daemon
+EnvironmentFile=/opt/wg-daemon/.env
+ExecStart=/opt/wg-daemon/venv/bin/python daemon.py
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

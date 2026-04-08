@@ -23,6 +23,9 @@ import PToggleButton from '@/components/baseui/ptogglebutton'
 import PixelSpinner from '@/components/baseui/spinner'
 import { toast } from '@/components/baseui/toast-manager'
 import { ChevronsRight, ChevronsLeft } from 'lucide-react'
+import VPNConfigModal from '@/components/VPNConfigModal'
+
+const NEED_VPN = process.env.NEXT_PUBLIC_NEED_VPN === 'true'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -203,6 +206,10 @@ function CreatePageContent() {
   const [credentials, setCredentials] = useState<VMCredentials | null>(null)
   const [provError, setProvError] = useState<string | null>(null)
 
+  // VPN config prompt (shown after first VM creation when NEED_VPN=true)
+  const [hasVpnConfig, setHasVpnConfig] = useState(true)  // assume true until checked
+  const [vpnModalOpen, setVpnModalOpen] = useState(false)
+
   // Bulk provisioning modal
   const [bulkModalOpen, setBulkModalOpen] = useState(false)
   const [bulkPrepSteps, setBulkPrepSteps] = useState<PrepStep[]>([])
@@ -245,6 +252,15 @@ function CreatePageContent() {
         setResources(res as ResourcesData)
         setPricing(price as PricingData)
         setMe(user as MeData)
+      }
+
+      if (NEED_VPN) {
+        try {
+          await clientApiFetch('/vpn/config')
+          setHasVpnConfig(true)
+        } catch {
+          setHasVpnConfig(false)
+        }
       }
     } catch (err) {
       setDataError(err instanceof Error ? err.message : 'Failed to load data')
@@ -463,6 +479,9 @@ function CreatePageContent() {
               password: d.password,
               expires_at: d.expires_at,
             })
+            if (NEED_VPN && !hasVpnConfig) {
+              setVpnModalOpen(true)
+            }
             break outer
           } else if (event.type === 'error') {
             throw new Error(event.message as string)
@@ -1244,6 +1263,15 @@ function CreatePageContent() {
         fatalError={bulkFatalError}
         onClose={handleBulkModalClose}
       />
+
+      {/* VPN config prompt — shown after first VM creation */}
+      {NEED_VPN && (
+        <VPNConfigModal
+          open={vpnModalOpen}
+          onClose={() => { setVpnModalOpen(false); setHasVpnConfig(true) }}
+          isFirstTime
+        />
+      )}
     </>
   )
 }

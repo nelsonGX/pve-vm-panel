@@ -9,11 +9,15 @@ import PixelSpinner from '@/components/baseui/spinner'
 import { useRouter } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
 import Icon from './baseui/icon'
-import { Gift } from 'lucide-react'
+import { Gift, Shield } from 'lucide-react'
+import VPNConfigModal from './VPNConfigModal'
+
+const NEED_VPN = process.env.NEXT_PUBLIC_NEED_VPN === 'true'
 
 export default function Header() {
   const { data: session, status } = useSession()
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [vpnModalOpen, setVpnModalOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
@@ -28,6 +32,7 @@ export default function Header() {
   }, [])
 
   return (
+    <>
     <header className="sticky top-0 z-50 border-b-2 border-zinc-700 bg-zinc-950/95 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
         {/* Left: brand + nav */}
@@ -112,6 +117,15 @@ export default function Header() {
                       <Gift size={16} />
                       Redeem Code
                     </button>
+                    {NEED_VPN && (
+                      <button
+                        onClick={() => { setDropdownOpen(false); setVpnModalOpen(true) }}
+                        className="w-full text-left px-4 py-2 text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors items-center flex gap-2"
+                      >
+                        <Shield size={16} />
+                        VPN Config
+                      </button>
+                    )}
                     <div className="border-t border-zinc-700" />
                     <button
                       onClick={() => { setDropdownOpen(false); signOut({ callbackUrl: '/' }) }}
@@ -138,5 +152,13 @@ export default function Header() {
         </div>
       </div>
     </header>
+
+    {NEED_VPN && (
+      <VPNConfigModal
+        open={vpnModalOpen}
+        onClose={() => setVpnModalOpen(false)}
+      />
+    )}
+  </>
   )
 }

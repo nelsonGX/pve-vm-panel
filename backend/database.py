@@ -96,6 +96,14 @@ async def create_indexes() -> None:
         unique=True,
     )
 
+    # vpn_configs
+    await _ensure_named_index(
+        db.vpn_configs, "user_id", "vpn_configs_user_id_unique", unique=True
+    )
+    await _ensure_named_index(
+        db.vpn_configs, "vpn_ip", "vpn_configs_vpn_ip_unique", unique=True
+    )
+
 
 async def close_client() -> None:
     global _client

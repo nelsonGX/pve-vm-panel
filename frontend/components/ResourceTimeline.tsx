@@ -250,7 +250,7 @@ export default function ResourceTimeline() {
           const texpires = new Date(tvm.expires_at)
           return (
             <div
-              className="pointer-events-none fixed z-[9999] w-56 border border-zinc-700 bg-zinc-900 p-3 text-xs shadow-xl -translate-y-full"
+              className="pointer-events-none fixed z-9999 w-56 border border-zinc-700 bg-zinc-900 p-3 text-xs shadow-xl -translate-y-full"
               style={{ left: anchorX, top: anchorY - 6 }}
             >
               <p className="mb-1 font-semibold text-zinc-100">{tvm.user.username}</p>
