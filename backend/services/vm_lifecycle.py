@@ -289,22 +289,42 @@ async def create_vm(
     # ------------------------------------------------------------------
     pve_vm_created = False
     try:
-        # Step 2: Clone template
+        # Step 2: Clone template — retry if stale LVM artifacts cause "already exists" errors.
         await _emit(progress, "clone", "loading")
-        clone_upid = await pve_client.clone_vm(
-            template_vmid=template_vmid,
-            newid=vmid,
-            name=vm_name,
-            storage=settings.VM_STORAGE,
-            target=settings.PVE_NODE,
-        )
+        _CLONE_MAX_RETRIES = 3
 
         async def _on_single_clone_progress(pct: float) -> None:
             if progress is not None:
                 await progress.put({"type": "clone_progress", "percent": pct})
 
-        await pve_client.poll_task(clone_upid, timeout_seconds=120, on_progress=_on_single_clone_progress)
-        pve_vm_created = True
+        for _clone_attempt in range(_CLONE_MAX_RETRIES):
+            try:
+                clone_upid = await pve_client.clone_vm(
+                    template_vmid=template_vmid,
+                    newid=vmid,
+                    name=vm_name,
+                    storage=settings.VM_STORAGE,
+                    target=settings.PVE_NODE,
+                )
+                await pve_client.poll_task(clone_upid, timeout_seconds=120, on_progress=_on_single_clone_progress)
+                pve_vm_created = True
+                break
+            except Exception as clone_exc:
+                if _clone_attempt < _CLONE_MAX_RETRIES - 1 and "already exists" in str(clone_exc).lower():
+                    logger.warning(
+                        "Clone for vmid=%d failed with stale disk artifact (attempt %d/%d), "
+                        "purging and retrying: %s",
+                        vmid, _clone_attempt + 1, _CLONE_MAX_RETRIES, clone_exc,
+                    )
+                    try:
+                        del_upid = await pve_client.delete_vm(vmid)
+                        await pve_client.poll_task(del_upid, timeout_seconds=60)
+                    except Exception:
+                        pass
+                    await asyncio.sleep(3)
+                else:
+                    raise
+
         await _emit(progress, "clone", "done")
 
         # Step 3: Move disk to target storage (skip if already there)
@@ -605,15 +625,10 @@ async def _provision_vm_from_template(
     """Provision a single VM from a pre-determined template as part of a bulk operation."""
     pve_vm_created = False
     try:
-        # Clone template
+        # Clone template — retry if stale LVM artifacts from a prior failed clone
+        # cause "already exists" errors on the target VMID.
         await _emit_vm_step(progress, vm_index, "clone", "loading")
-        clone_upid = await pve_client.clone_vm(
-            template_vmid=template_vmid,
-            newid=vmid,
-            name=vm_name,
-            storage=settings.VM_STORAGE,
-            target=settings.PVE_NODE,
-        )
+        _CLONE_MAX_RETRIES = 3
 
         async def _on_clone_progress(pct: float) -> None:
             if progress is not None:
@@ -623,8 +638,34 @@ async def _provision_vm_from_template(
                     "percent": pct,
                 })
 
-        await pve_client.poll_task(clone_upid, timeout_seconds=600, on_progress=_on_clone_progress)
-        pve_vm_created = True
+        for _clone_attempt in range(_CLONE_MAX_RETRIES):
+            try:
+                clone_upid = await pve_client.clone_vm(
+                    template_vmid=template_vmid,
+                    newid=vmid,
+                    name=vm_name,
+                    storage=settings.VM_STORAGE,
+                    target=settings.PVE_NODE,
+                )
+                await pve_client.poll_task(clone_upid, timeout_seconds=600, on_progress=_on_clone_progress)
+                pve_vm_created = True
+                break
+            except Exception as clone_exc:
+                if _clone_attempt < _CLONE_MAX_RETRIES - 1 and "already exists" in str(clone_exc).lower():
+                    logger.warning(
+                        "Clone for vmid=%d failed with stale disk artifact (attempt %d/%d), "
+                        "purging and retrying: %s",
+                        vmid, _clone_attempt + 1, _CLONE_MAX_RETRIES, clone_exc,
+                    )
+                    try:
+                        del_upid = await pve_client.delete_vm(vmid)
+                        await pve_client.poll_task(del_upid, timeout_seconds=60)
+                    except Exception:
+                        pass
+                    await asyncio.sleep(3)
+                else:
+                    raise
+
         await _emit_vm_step(progress, vm_index, "clone", "done")
 
         # Configure storage, CPU, RAM, disk, cloud-init
