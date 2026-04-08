@@ -441,8 +441,16 @@ async def _poll_vm_running(
 # ---------------------------------------------------------------------------
 
 
+_DELETE_MAX_RETRIES = 10
+_DELETE_RETRY_DELAY = 30  # seconds between retries when VM is locked
+
+
 async def delete_vm(vm_doc: dict, db: AsyncIOMotorDatabase) -> None:
-    """Delete a VM from Proxmox and mark it expired in DB."""
+    """Delete a VM from Proxmox and mark it expired in DB.
+
+    Retries up to _DELETE_MAX_RETRIES times when the VM is locked in Proxmox,
+    waiting _DELETE_RETRY_DELAY seconds between attempts.
+    """
     vmid = vm_doc["vmid"]
     vm_object_id = (
         ObjectId(vm_doc["_id"]) if not isinstance(vm_doc["_id"], ObjectId) else vm_doc["_id"]
@@ -453,20 +461,41 @@ async def delete_vm(vm_doc: dict, db: AsyncIOMotorDatabase) -> None:
         {"$set": {"status": "deleting"}},
     )
 
-    try:
+    last_exc: Exception | None = None
+    for attempt in range(_DELETE_MAX_RETRIES):
         try:
-            await pve_client.stop_vm(vmid)
-            await asyncio.sleep(2)
-        except Exception:
-            pass
+            # Wait up to 60s for any active Proxmox lock to clear
+            try:
+                await pve_client.wait_for_vm_unlock(vmid, timeout_seconds=60)
+            except Exception:
+                pass  # best-effort; proceed and let delete fail if still locked
 
-        del_upid = await pve_client.delete_vm(vmid)
-        await pve_client.poll_task(del_upid, timeout_seconds=180)
-    except Exception as exc:
-        logger.error("Failed to delete vmid=%s from Proxmox: %s", vmid, exc)
+            try:
+                await pve_client.stop_vm(vmid)
+                await asyncio.sleep(2)
+            except Exception:
+                pass
+
+            del_upid = await pve_client.delete_vm(vmid)
+            await pve_client.poll_task(del_upid, timeout_seconds=180)
+            last_exc = None
+            break  # success
+        except Exception as exc:
+            last_exc = exc
+            if attempt < _DELETE_MAX_RETRIES - 1 and "lock" in str(exc).lower():
+                logger.warning(
+                    "VM vmid=%s is locked (attempt %d/%d), retrying in %ds: %s",
+                    vmid, attempt + 1, _DELETE_MAX_RETRIES, _DELETE_RETRY_DELAY, exc,
+                )
+                await asyncio.sleep(_DELETE_RETRY_DELAY)
+            else:
+                break  # non-lock error or last attempt
+
+    if last_exc is not None:
+        logger.error("Failed to delete vmid=%s from Proxmox: %s", vmid, last_exc)
         await db.vms.update_one(
             {"_id": vm_object_id},
-            {"$set": {"status": "error", "error": f"Deletion failed: {exc}"}},
+            {"$set": {"status": "error", "error": f"Deletion failed: {last_exc}"}},
         )
         return
 
@@ -895,26 +924,29 @@ async def bulk_create_vms(
     })
 
     # ------------------------------------------------------------------
-    # Provision all VMs concurrently
+    # Provision VMs with a concurrency limit to avoid overloading Proxmox
     # ------------------------------------------------------------------
-    tasks = [
-        _provision_vm_from_template(
-            vm_index=i,
-            template_vmid=template_vmid,
-            password=passwords[i],
-            vmid=vmids[i],
-            vm_doc_id=vm_doc_ids[i],
-            ip_address=ip_addresses[i],
-            vm_name=f"vm-{discord_id[:8]}-{vmids[i]}",
-            expires_at=expires_at,
-            single_cost=single_cost,
-            request=request,
-            db=db,
-            prefix_len=prefix_len,
-            progress=progress,
-        )
-        for i in range(request.count)
-    ]
+    sem = asyncio.Semaphore(settings.BULK_CREATE_CONCURRENCY)
+
+    async def _guarded(i: int):
+        async with sem:
+            return await _provision_vm_from_template(
+                vm_index=i,
+                template_vmid=template_vmid,
+                password=passwords[i],
+                vmid=vmids[i],
+                vm_doc_id=vm_doc_ids[i],
+                ip_address=ip_addresses[i],
+                vm_name=f"vm-{discord_id[:8]}-{vmids[i]}",
+                expires_at=expires_at,
+                single_cost=single_cost,
+                request=request,
+                db=db,
+                prefix_len=prefix_len,
+                progress=progress,
+            )
+
+    tasks = [_guarded(i) for i in range(request.count)]
     results_raw = await asyncio.gather(*tasks, return_exceptions=True)
 
     # ------------------------------------------------------------------

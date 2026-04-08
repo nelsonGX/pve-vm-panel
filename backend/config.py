@@ -69,6 +69,9 @@ class Settings(BaseSettings):
     # Admin Discord IDs (comma-separated in env)
     ADMIN_DISCORD_IDS: list[str] = []
 
+    # Bulk VM creation: max concurrent Proxmox provisions at once
+    BULK_CREATE_CONCURRENCY: int = 5
+
     # VPN
     NEED_VPN: bool = False
     VPN_SUBNET: str = "10.100.0.0/24"

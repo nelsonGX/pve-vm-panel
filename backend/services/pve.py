@@ -153,6 +153,29 @@ class PVEClient:
         """Convert a VM into a Proxmox template (in-place, non-reversible)."""
         await self._post(f"/nodes/{self._node}/qemu/{vmid}/template")
 
+    async def is_vm_locked(self, vmid: int) -> bool:
+        """Return True if the VM currently has a lock set in its config."""
+        try:
+            config = await self.get_vm_config(vmid)
+            return bool(config.get("lock"))
+        except Exception:
+            return False
+
+    async def wait_for_vm_unlock(
+        self,
+        vmid: int,
+        timeout_seconds: int = 300,
+        poll_interval: float = 5.0,
+    ) -> None:
+        """Block until the VM is no longer locked. Raises PVEError on timeout."""
+        elapsed = 0.0
+        while elapsed < timeout_seconds:
+            if not await self.is_vm_locked(vmid):
+                return
+            await asyncio.sleep(poll_interval)
+            elapsed += poll_interval
+        raise PVEError(f"VM {vmid} still locked after {timeout_seconds}s")
+
     # ------------------------------------------------------------------ #
     # Task polling
     # ------------------------------------------------------------------ #
