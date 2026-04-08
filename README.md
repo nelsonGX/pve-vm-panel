@@ -31,6 +31,7 @@ VM Created
   - adjusting points
   - creating redemption codes
   - force deleting VMs
+- Optional WireGuard VPN proxy so users can reach VMs that have no public IP
 
 ## Stack
 
@@ -43,6 +44,7 @@ VM Created
 
 - `frontend/`: Next.js app and UI
 - `backend/`: FastAPI API, Proxmox logic, scheduled jobs
+- `proxy-daemon/`: WireGuard proxy daemon (optional, for VPN access to VMs)
 - `.env.example`: required environment variables
 
 ## Requirements
@@ -120,3 +122,75 @@ npm install
 npm run build
 npm run start
 ```
+
+## WireGuard VPN (Optional)
+
+If your VMs don't have public IPs, the panel can provide each user a personal WireGuard config that routes their traffic through a cloud proxy server.
+
+### How it works
+
+```
+User device  ──(WireGuard)──►  Proxy server  ──(LAN/route)──►  VM (private IP)
+```
+
+The proxy daemon runs on the cloud server, pulls the peer list from the panel every 30 seconds, and applies changes live with `wg set` (never restarting the interface).
+
+### Setup
+
+#### 1. Panel env vars
+
+Add these to your `.env` (backend) and `.env.local` (frontend):
+
+```env
+NEED_VPN=true
+VPN_SUBNET=10.100.0.0/24          # address space for VPN clients
+VPN_SERVER_ENDPOINT=1.2.3.4:51820 # public IP/host of the proxy server
+VPN_DAEMON_SECRET=a-long-random-secret
+```
+
+Set `NEXT_PUBLIC_NEED_VPN=true` in `frontend/.env.local`.
+
+> `VPN_SERVER_PUBLIC_KEY` is **not required** — the daemon registers its public key automatically on first sync.
+
+#### 2. Deploy the proxy daemon
+
+Copy the `proxy-daemon/` folder to your cloud server and run:
+
+```bash
+cd proxy-daemon
+sudo bash install.sh
+```
+
+The script will:
+- Install WireGuard and Python
+- Generate a WireGuard server keypair
+- Prompt for `PANEL_API_URL`, `DAEMON_SECRET`, VPN subnet, listen port, and network interface
+- Write `/opt/wg-daemon/.env`
+- Install and enable `wg-daemon.service`
+
+Then start it:
+
+```bash
+systemctl start wg-daemon
+journalctl -u wg-daemon -f
+```
+
+On startup the daemon logs its public key:
+
+```
+Server public key: <base64>
+```
+
+The panel picks this up automatically on the next sync — no manual copy-paste of keys needed.
+
+#### 3. Make the proxy reachable to VMs
+
+The proxy server needs a route to your VM private network (e.g. `10.86.0.0/16`). Options:
+
+- Deploy the proxy on the same LAN as the PVE host
+- Add a static route on the proxy pointing at the PVE host's IP
+- Run a second WireGuard tunnel between the proxy and the PVE host
+
+#### User flow
+
+When a user creates their first VM (and VPN is enabled), the panel automatically generates a WireGuard config for them and shows a prompt to download it. They can also retrieve it anytime from **Header → VPN Config**.
