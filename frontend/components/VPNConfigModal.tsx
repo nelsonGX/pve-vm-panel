@@ -74,7 +74,7 @@ export default function VPNConfigModal({ open, onClose, isFirstTime }: VPNConfig
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
       <div className="w-full max-w-lg">
         <PDiv fullWidth padding="p-6">
           {/* Header */}

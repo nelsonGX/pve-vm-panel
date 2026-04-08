@@ -33,7 +33,7 @@ export default function Header() {
 
   return (
     <>
-    <header className="sticky top-0 z-50 border-b-2 border-zinc-700 bg-zinc-950/95 backdrop-blur-md">
+    <header className="sticky top-0 z-30 border-b-2 border-zinc-700 bg-zinc-950/95 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
         {/* Left: brand + nav */}
         <div className="flex items-center space-x-8">
@@ -95,7 +95,7 @@ export default function Header() {
                 </button>
 
                 {dropdownOpen && (
-                  <div className="absolute right-0 mt-1 w-44 border-2 border-zinc-700 bg-zinc-900 shadow-lg z-50">
+                  <div className="absolute right-0 mt-1 w-44 border-2 border-zinc-700 bg-zinc-900 shadow-lg z-30">
                     <button
                       onClick={() => {setDropdownOpen(false); router.push('/create')}}
                       className="w-full text-left px-4 py-2 text-blue-300 hover:bg-zinc-800 hover:text-white transition-colors items-center flex gap-2"

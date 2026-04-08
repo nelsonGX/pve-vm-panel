@@ -24,19 +24,19 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const getContainerClasses = (position: NonNullable<Toast['position']>) => {
     switch (position) {
       case 'top-right':
-        return 'fixed top-4 right-4 z-50 flex flex-col items-end gap-3 pointer-events-none';
+        return 'fixed top-4 right-4 z-[9999] flex flex-col items-end gap-3 pointer-events-none';
       case 'top-left':
-        return 'fixed top-4 left-4 z-50 flex flex-col items-start gap-3 pointer-events-none';
+        return 'fixed top-4 left-4 z-[9999] flex flex-col items-start gap-3 pointer-events-none';
       case 'bottom-right':
-        return 'fixed bottom-4 right-4 z-50 flex flex-col-reverse items-end gap-3 pointer-events-none';
+        return 'fixed bottom-4 right-4 z-[9999] flex flex-col-reverse items-end gap-3 pointer-events-none';
       case 'bottom-left':
-        return 'fixed bottom-4 left-4 z-50 flex flex-col-reverse items-start gap-3 pointer-events-none';
+        return 'fixed bottom-4 left-4 z-[9999] flex flex-col-reverse items-start gap-3 pointer-events-none';
       case 'top-center':
-        return 'fixed top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-3 pointer-events-none';
+        return 'fixed top-4 left-1/2 -translate-x-1/2 z-[9999] flex flex-col items-center gap-3 pointer-events-none';
       case 'bottom-center':
-        return 'fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex flex-col-reverse items-center gap-3 pointer-events-none';
+        return 'fixed bottom-4 left-1/2 -translate-x-1/2 z-[9999] flex flex-col-reverse items-center gap-3 pointer-events-none';
       default:
-        return 'fixed top-4 right-4 z-50 flex flex-col items-end gap-3 pointer-events-none';
+        return 'fixed top-4 right-4 z-[9999] flex flex-col items-end gap-3 pointer-events-none';
     }
   };
 
