@@ -189,8 +189,9 @@ export default function BulkProvisioningModal({
           100% { transform: translateY(0);    opacity: 1; }
         }
       `}</style>
-      <div className="animate-scale-in w-full max-w-2xl" style={{ maxHeight: '90vh' }}>
-        <PDiv fullWidth padding="p-0" innerClassName="flex flex-col overflow-hidden" style={{ maxHeight: '90vh' }}>
+      <div className="animate-scale-in w-full max-w-2xl">
+        <PDiv fullWidth padding="p-0">
+          <div className="flex flex-col overflow-hidden" style={{ maxHeight: 'calc(90vh - 3rem)' }}>
           <div className="shrink-0 border-b-2 border-zinc-700 p-6 pb-4">
             <h2 className="mb-1 text-lg font-semibold text-zinc-100">
               {hasFatal
@@ -212,7 +213,7 @@ export default function BulkProvisioningModal({
             )}
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 pt-4">
+          <div className="min-h-0 flex-1 overflow-y-auto p-6 pt-4">
             {hasPrepSteps && prepSteps.length > 0 && (
               <div className="mb-5">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-zinc-500">
@@ -370,6 +371,7 @@ export default function BulkProvisioningModal({
               </PButton>
             </div>
           )}
+          </div>
         </PDiv>
       </div>
     </div>
