@@ -1,15 +1,11 @@
-import { getToken } from 'next-auth/jwt'
+import { auth } from '@/auth'
 import { NextRequest, NextResponse } from 'next/server'
 
 const FASTAPI_BASE = 'http://localhost:8124/api/v1'
-const SECRET = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? ''
 const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET ?? ''
 
 async function proxy(req: NextRequest): Promise<NextResponse> {
-  const token = await getToken({
-    req,
-    secret: SECRET,
-  })
+  const session = await auth()
 
   const url = new URL(req.url)
   const downstreamPath = url.pathname.replace(/^\/api\/v1/, '')
@@ -20,18 +16,11 @@ async function proxy(req: NextRequest): Promise<NextResponse> {
     'Authorization': `Bearer ${INTERNAL_API_SECRET}`,
   }
 
-  const discordId = token?.discordId as string | undefined
-  if (discordId) {
-    headers['X-Discord-Id'] = discordId
-  }
-
-  const discordUsername = token?.discordUsername as string | undefined
-  if (discordUsername) {
-    headers['X-Discord-Username'] = discordUsername
-  }
-
-  if ('avatar' in (token ?? {})) {
-    headers['X-Discord-Avatar'] = ((token?.avatar as string | null | undefined) ?? '')
+  if (session?.user) {
+    const { discordId, discordUsername, avatar } = session.user
+    if (discordId) headers['X-Discord-Id'] = discordId
+    if (discordUsername) headers['X-Discord-Username'] = discordUsername
+    headers['X-Discord-Avatar'] = avatar ?? ''
   }
 
   const daemonSecret = req.headers.get('X-Daemon-Secret')
