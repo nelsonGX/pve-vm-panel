@@ -188,7 +188,7 @@ export default function VMCard({ vm, onDelete, onStart, onStop, onRestart, loadi
             {menuOpen && (
               <div className="mt-2 w-full border-4 border-zinc-700 bg-zinc-950">
                 <div className="flex flex-col">
-                  {menuActions.map((action) => (
+                  {menuActions.map((action) => action && (
                     <button
                       key={action.key}
                       type="button"
