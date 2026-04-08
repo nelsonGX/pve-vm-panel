@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-DURATION_OPTIONS: list[int] = [1, 2, 4, 8, 12, 24]
+DURATION_OPTIONS: list[int] = [1, 2, 4, 8, 12, 24, 36, 48]
 
 
 class Settings(BaseSettings):
