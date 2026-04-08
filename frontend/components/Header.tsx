@@ -9,7 +9,7 @@ import PixelSpinner from '@/components/baseui/spinner'
 import { useRouter } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
 import Icon from './baseui/icon'
-import { Gift, Shield } from 'lucide-react'
+import { Gift, ChevronsLeftRightEllipsis } from 'lucide-react'
 import VPNConfigModal from './VPNConfigModal'
 
 const NEED_VPN = process.env.NEXT_PUBLIC_NEED_VPN === 'true'
@@ -122,7 +122,7 @@ export default function Header() {
                         onClick={() => { setDropdownOpen(false); setVpnModalOpen(true) }}
                         className="w-full text-left px-4 py-2 text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors items-center flex gap-2"
                       >
-                        <Shield size={16} />
+                        <ChevronsLeftRightEllipsis size={16} />
                         VPN Config
                       </button>
                     )}

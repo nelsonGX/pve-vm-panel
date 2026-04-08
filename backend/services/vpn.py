@@ -26,7 +26,7 @@ async def get_available_vpn_ip(db: AsyncIOMotorDatabase) -> str | None:
         return None
     server_ip = hosts[0]  # .1 is the WireGuard server
 
-    used: set[ipaddress.IPv4Address] = set()
+    used: set[ipaddress.IPv4Address | ipaddress.IPv6Address] = set()
     async for doc in db.vpn_configs.find({}, {"vpn_ip": 1}):
         try:
             used.add(ipaddress.ip_address(doc["vpn_ip"]))
@@ -43,16 +43,17 @@ async def get_available_vpn_ip(db: AsyncIOMotorDatabase) -> str | None:
 def build_client_config(private_key: str, vpn_ip: str) -> str:
     """Build a WireGuard client .conf string for the given user."""
     prefix = ipaddress.ip_network(settings.VPN_SUBNET, strict=False).prefixlen
+    # Route both the VPN subnet and the VM private network through the tunnel
+    allowed_ips = f"{settings.VPN_SUBNET}, {settings.VM_IP_RANGE}"
     return (
         f"[Interface]\n"
         f"PrivateKey = {private_key}\n"
         f"Address = {vpn_ip}/{prefix}\n"
-        f"DNS = {settings.VPN_DNS}\n"
         f"\n"
         f"[Peer]\n"
         f"PublicKey = {settings.VPN_SERVER_PUBLIC_KEY}\n"
         f"Endpoint = {settings.VPN_SERVER_ENDPOINT}\n"
-        f"AllowedIPs = {settings.VPN_SUBNET}\n"
+        f"AllowedIPs = {allowed_ips}\n"
         f"PersistentKeepalive = 25\n"
     )
 

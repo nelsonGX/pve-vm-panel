@@ -34,6 +34,11 @@ async function proxy(req: NextRequest): Promise<NextResponse> {
     headers['X-Discord-Avatar'] = ((token?.avatar as string | null | undefined) ?? '')
   }
 
+  const daemonSecret = req.headers.get('X-Daemon-Secret')
+  if (daemonSecret) {
+    headers['X-Daemon-Secret'] = daemonSecret
+  }
+
   const body =
     req.method !== 'GET' && req.method !== 'HEAD'
       ? await req.text()
