@@ -83,6 +83,16 @@ ask WG_INTERFACE   "WireGuard interface name" "wg0"
 ask WG_LISTEN_PORT "WireGuard listen port"    "51820"
 ask SYNC_INTERVAL  "Peer sync interval (seconds)" "30"
 
+# VPN subnet — derive server address as the first host (.1)
+ask VPN_SUBNET "VPN subnet (must match VPN_SUBNET in panel .env)" "10.100.0.0/24"
+# Extract prefix length and base, then build server address x.x.x.1/<prefix>
+VPN_PREFIX="${VPN_SUBNET##*/}"
+VPN_BASE="${VPN_SUBNET%/*}"
+# Replace last octet with 1 to get server IP
+SERVER_IP=$(echo "$VPN_BASE" | awk -F. '{print $1"."$2"."$3".1"}')
+WG_ADDRESS="${SERVER_IP}/${VPN_PREFIX}"
+echo "  Server VPN address will be: $WG_ADDRESS"
+
 # Detect default outbound interface for iptables rules
 DEFAULT_IFACE=$(ip route show default 2>/dev/null | awk '/default/ {print $5; exit}')
 DEFAULT_IFACE="${DEFAULT_IFACE:-eth0}"
@@ -96,6 +106,7 @@ echo "  Summary:"
 echo "    PANEL_API_URL  = $PANEL_API_URL"
 echo "    DAEMON_SECRET  = ${DAEMON_SECRET:0:4}$(printf '*%.0s' $(seq 1 $((${#DAEMON_SECRET}-4))))"
 echo "    WG_INTERFACE   = $WG_INTERFACE"
+echo "    WG_ADDRESS     = $WG_ADDRESS"
 echo "    WG_LISTEN_PORT = $WG_LISTEN_PORT"
 echo "    SYNC_INTERVAL  = ${SYNC_INTERVAL}s"
 echo "    NET_IFACE      = $NET_IFACE"
@@ -123,6 +134,7 @@ DAEMON_SECRET=${DAEMON_SECRET}
 WG_INTERFACE=${WG_INTERFACE}
 WG_CONF_PATH=/etc/wireguard/${WG_INTERFACE}.conf
 WG_SERVER_PRIVATE_KEY=${PRIVATE_KEY}
+WG_ADDRESS=${WG_ADDRESS}
 WG_LISTEN_PORT=${WG_LISTEN_PORT}
 SYNC_INTERVAL=${SYNC_INTERVAL}
 WG_POSTUP=${WG_POSTUP}

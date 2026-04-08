@@ -40,7 +40,28 @@ async def get_available_vpn_ip(db: AsyncIOMotorDatabase) -> str | None:
     return None
 
 
-def build_client_config(private_key: str, vpn_ip: str) -> str:
+async def get_server_public_key(db: AsyncIOMotorDatabase) -> str:
+    """
+    Return the server's WireGuard public key.
+    Prefers the key last registered by the daemon (authoritative),
+    falls back to VPN_SERVER_PUBLIC_KEY from env.
+    """
+    doc = await db.vpn_server_config.find_one({"_id": "server"})
+    if doc and doc.get("public_key"):
+        return doc["public_key"]
+    return settings.VPN_SERVER_PUBLIC_KEY
+
+
+async def set_server_public_key(public_key: str, db: AsyncIOMotorDatabase) -> None:
+    """Upsert the server's public key (called by the daemon on each sync)."""
+    await db.vpn_server_config.update_one(
+        {"_id": "server"},
+        {"$set": {"public_key": public_key, "updated_at": datetime.now(timezone.utc)}},
+        upsert=True,
+    )
+
+
+def build_client_config(private_key: str, vpn_ip: str, server_public_key: str) -> str:
     """Build a WireGuard client .conf string for the given user."""
     prefix = ipaddress.ip_network(settings.VPN_SUBNET, strict=False).prefixlen
     # Route both the VPN subnet and the VM private network through the tunnel
@@ -51,7 +72,7 @@ def build_client_config(private_key: str, vpn_ip: str) -> str:
         f"Address = {vpn_ip}/{prefix}\n"
         f"\n"
         f"[Peer]\n"
-        f"PublicKey = {settings.VPN_SERVER_PUBLIC_KEY}\n"
+        f"PublicKey = {server_public_key}\n"
         f"Endpoint = {settings.VPN_SERVER_ENDPOINT}\n"
         f"AllowedIPs = {allowed_ips}\n"
         f"PersistentKeepalive = 25\n"

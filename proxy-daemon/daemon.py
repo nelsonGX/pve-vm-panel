@@ -39,6 +39,8 @@ DAEMON_SECRET: str = os.environ["DAEMON_SECRET"]
 WG_INTERFACE: str = os.getenv("WG_INTERFACE", "wg0")
 WG_CONF_PATH: str = os.getenv("WG_CONF_PATH", f"/etc/wireguard/{WG_INTERFACE}.conf")
 WG_SERVER_PRIVATE_KEY: str = os.environ["WG_SERVER_PRIVATE_KEY"]
+# Address of the server's wg interface, e.g. "10.103.0.1/24"
+WG_ADDRESS: str = os.environ["WG_ADDRESS"]
 WG_LISTEN_PORT: int = int(os.getenv("WG_LISTEN_PORT", "51820"))
 SYNC_INTERVAL: int = int(os.getenv("SYNC_INTERVAL", "30"))
 
@@ -75,6 +77,7 @@ def _full_conf(peers: list[dict]) -> str:
     lines = [
         "[Interface]",
         f"PrivateKey = {WG_SERVER_PRIVATE_KEY}",
+        f"Address = {WG_ADDRESS}",
         f"ListenPort = {WG_LISTEN_PORT}",
     ]
     if POSTUP:
@@ -121,14 +124,38 @@ def _ensure_interface_up() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Derive server public key from private key
+# ---------------------------------------------------------------------------
+
+def _derive_public_key(private_key_b64: str) -> str:
+    """Compute the WireGuard public key from a base64-encoded private key."""
+    result = subprocess.run(
+        ["wg", "pubkey"],
+        input=private_key_b64,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"wg pubkey failed: {result.stderr.strip()}")
+    return result.stdout.strip()
+
+
+# Derived once at startup — this is the authoritative public key for this server.
+SERVER_PUBLIC_KEY: str = _derive_public_key(WG_SERVER_PRIVATE_KEY)
+
+
+# ---------------------------------------------------------------------------
 # Panel API client
 # ---------------------------------------------------------------------------
 
 async def fetch_peers(client: httpx.AsyncClient) -> list[dict]:
-    """Pull the current peer list from the panel backend."""
+    """Pull the current peer list from the panel backend, registering our public key."""
     resp = await client.get(
         f"{PANEL_API_URL}/vpn/peers",
-        headers={"X-Daemon-Secret": DAEMON_SECRET},
+        headers={
+            "X-Daemon-Secret": DAEMON_SECRET,
+            "X-Server-Pubkey": SERVER_PUBLIC_KEY,
+        },
     )
     resp.raise_for_status()
     data = resp.json()
@@ -145,6 +172,7 @@ async def sync_loop() -> None:
         "Daemon started — interface=%s, panel=%s, interval=%ds",
         WG_INTERFACE, PANEL_API_URL, SYNC_INTERVAL,
     )
+    logger.info("Server public key: %s", SERVER_PUBLIC_KEY)
 
     last_peer_keys: set[str] = set()
 
