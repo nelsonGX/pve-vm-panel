@@ -55,10 +55,11 @@ class GPUConfigTests(unittest.TestCase):
             [
                 {
                     "id": "RTX3090",
+                    "mapping_id": None,
                     "pci_id": "0000:61:00.0",
                     "pci_ids": ["0000:61:00.0"],
                     "hostpci_slots": ["0000:61:00"],
-                    "hostpci_options": ["pcie=1,x-vga=1"],
+                    "hostpci_options": ["pcie=1"],
                 }
             ],
         )
@@ -96,6 +97,51 @@ class GPUConfigTests(unittest.TestCase):
         )
 
         self.assertEqual(config, {"hostpci0": "0000:61:00,pcie=1,x-vga=1"})
+
+    def test_gpu_pool_accepts_mapping_id_without_raw_pci(self) -> None:
+        settings = self.config_module.Settings(
+            RESOURCE_GPU_POOL='[{"id":"RTX3090","mapping_id":"rtx3090"}]'
+        )
+
+        self.assertEqual(
+            settings.RESOURCE_GPU_POOL,
+            [
+                {
+                    "id": "RTX3090",
+                    "mapping_id": "rtx3090",
+                    "pci_id": None,
+                    "pci_ids": [],
+                    "hostpci_slots": [],
+                    "hostpci_options": ["pcie=1"],
+                }
+            ],
+        )
+
+    def test_gpu_hostpci_config_uses_mapping_id(self) -> None:
+        sys.modules.pop("services.vm_lifecycle", None)
+        vm_lifecycle = importlib.import_module("services.vm_lifecycle")
+
+        config = vm_lifecycle._gpu_hostpci_config(
+            {
+                "mapping_id": "rtx3090",
+                "hostpci_options": ["pcie=1"],
+            }
+        )
+
+        self.assertEqual(config, {"hostpci0": "mapping=rtx3090,pcie=1"})
+
+    def test_gpu_hostpci_config_preserves_rombar_option(self) -> None:
+        sys.modules.pop("services.vm_lifecycle", None)
+        vm_lifecycle = importlib.import_module("services.vm_lifecycle")
+
+        config = vm_lifecycle._gpu_hostpci_config(
+            {
+                "mapping_id": "rtx3090",
+                "hostpci_options": ["pcie=1,rombar=0"],
+            }
+        )
+
+        self.assertEqual(config, {"hostpci0": "mapping=rtx3090,pcie=1,rombar=0"})
 
 
 if __name__ == "__main__":

@@ -133,16 +133,16 @@ For your RTX 3090 shown by `lspci` as:
 61:00.0 VGA compatible controller: NVIDIA Corporation GA102 [GeForce RTX 3090] (rev a1)
 ```
 
-set the backend `RESOURCE_GPU_POOL` to:
+create a Proxmox Datacenter PCI resource mapping for non-root API tokens, then set the backend `RESOURCE_GPU_POOL` to the mapping id:
 
 ```env
-RESOURCE_GPU_POOL=[{"id":"RTX3090","pci_id":"61:00.0"}]
+RESOURCE_GPU_POOL=[{"id":"RTX3090","mapping_id":"rtx3090","hostpci_options":"pcie=1,rombar=0"}]
 ```
 
-If `lspci -nn -s 61:00` also shows an audio function, usually `61:00.1`, and it is in the same IOMMU group, use:
+Raw PCI addresses are only accepted by Proxmox for root-capable API credentials. If `lspci -nn -s 61:00` also shows an audio function, usually `61:00.1`, and it is in the same IOMMU group, the raw-address form is:
 
 ```env
-RESOURCE_GPU_POOL=[{"id":"RTX3090","pci_ids":["61:00.0","61:00.1"],"hostpci_options":"pcie=1,x-vga=1"}]
+RESOURCE_GPU_POOL=[{"id":"RTX3090","pci_ids":["61:00.0","61:00.1"],"hostpci_options":"pcie=1,rombar=0"}]
 ```
 
 On the Proxmox host, verify passthrough readiness before testing the panel:
@@ -162,7 +162,7 @@ lspci -nnk -s 61:00.0
 The created VM should show a config line like:
 
 ```text
-hostpci0: 0000:61:00,pcie=1,x-vga=1
+hostpci0: mapping=rtx3090,pcie=1,rombar=0
 ```
 
 Use a GPU-capable Linux guest template with NVIDIA drivers installed or install them after first boot, then verify inside the guest with `nvidia-smi`.

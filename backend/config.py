@@ -15,6 +15,7 @@ PCI_ID_RE = re.compile(
     r"(?P<slot>[0-9a-fA-F]{2})"
     r"(?:\.(?P<function>[0-7]))?$"
 )
+MAPPING_ID_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 
 
 def normalize_pci_id(value: Any) -> str:
@@ -155,10 +156,26 @@ class Settings(BaseSettings):
                 raise ValueError(f"Duplicate GPU id '{gpu_id}' in RESOURCE_GPU_POOL")
             seen_ids.add(gpu_id)
 
+            mapping_id = raw.get("mapping_id")
+            if mapping_id is not None:
+                if not isinstance(mapping_id, str) or not mapping_id.strip():
+                    raise ValueError(
+                        f"RESOURCE_GPU_POOL entry '{gpu_id}' mapping_id must be a non-empty string"
+                    )
+                mapping_id = mapping_id.strip()
+                if MAPPING_ID_RE.fullmatch(mapping_id) is None:
+                    raise ValueError(
+                        f"RESOURCE_GPU_POOL entry '{gpu_id}' has invalid mapping_id '{mapping_id}'"
+                    )
+
             pci_values = raw.get("pci_ids", raw.get("pci_id"))
+            if pci_values is None and mapping_id is None:
+                raise ValueError(
+                    f"RESOURCE_GPU_POOL entry '{gpu_id}' must include mapping_id, pci_id, or pci_ids"
+                )
             if pci_values is None:
-                raise ValueError(f"RESOURCE_GPU_POOL entry '{gpu_id}' must include pci_id or pci_ids")
-            if isinstance(pci_values, str):
+                pci_ids = []
+            elif isinstance(pci_values, str):
                 pci_ids = [normalize_pci_id(pci_values)]
             elif isinstance(pci_values, list) and pci_values:
                 pci_ids = [normalize_pci_id(item) for item in pci_values]
@@ -167,11 +184,12 @@ class Settings(BaseSettings):
 
             hostpci_slots = list(dict.fromkeys(pci_slot_id(pci_id) for pci_id in pci_ids))
             options = raw.get("hostpci_options")
+            hostpci_count = 1 if mapping_id is not None else len(hostpci_slots)
             if options is None:
-                hostpci_options: list[str] = ["pcie=1,x-vga=1"] + ["pcie=1"] * (len(hostpci_slots) - 1)
+                hostpci_options: list[str] = ["pcie=1"] * hostpci_count
             elif isinstance(options, str):
-                hostpci_options = [options.strip()] + ["pcie=1"] * (len(hostpci_slots) - 1)
-            elif isinstance(options, list) and len(options) == len(hostpci_slots):
+                hostpci_options = [options.strip()] + ["pcie=1"] * (hostpci_count - 1)
+            elif isinstance(options, list) and len(options) == hostpci_count:
                 hostpci_options = []
                 for option in options:
                     if not isinstance(option, str):
@@ -188,7 +206,8 @@ class Settings(BaseSettings):
             normalized.append({
                 **raw,
                 "id": gpu_id,
-                "pci_id": pci_ids[0],
+                "mapping_id": mapping_id,
+                "pci_id": pci_ids[0] if pci_ids else None,
                 "pci_ids": pci_ids,
                 "hostpci_slots": hostpci_slots,
                 "hostpci_options": hostpci_options,

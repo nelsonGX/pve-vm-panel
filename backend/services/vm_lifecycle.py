@@ -120,6 +120,11 @@ def _serialize_doc(doc: dict) -> dict:
 
 
 def _gpu_hostpci_config(gpu_cfg: dict) -> dict[str, str]:
+    mapping_id = gpu_cfg.get("mapping_id")
+    if mapping_id:
+        options = gpu_cfg.get("hostpci_options", ["pcie=1"])[0]
+        return {"hostpci0": f"mapping={mapping_id},{options}" if options else f"mapping={mapping_id}"}
+
     hostpci_slots = gpu_cfg.get("hostpci_slots") or [gpu_cfg["pci_id"].split(".", 1)[0]]
     hostpci_options = gpu_cfg.get("hostpci_options") or []
     config: dict[str, str] = {}
@@ -209,7 +214,7 @@ async def create_vm(
         )
         if gpu_cfg is None:
             raise ValueError(f"GPU '{request.gpu_id}' not in pool")
-        gpu_pci_ids = list(gpu_cfg.get("pci_ids") or [gpu_cfg["pci_id"]])
+        gpu_pci_ids = list(gpu_cfg.get("pci_ids") or [])
         gpu_in_use = await db.vms.find_one(
             {"gpu_id": request.gpu_id, "status": {"$in": ["provisioning", "running"]}}
         )
@@ -368,6 +373,7 @@ async def create_vm(
         if gpu_cfg is not None:
             await pve_client.update_vm_config(
                 vmid,
+                machine="q35",
                 **_gpu_hostpci_config(gpu_cfg),
             )
 
