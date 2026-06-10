@@ -123,6 +123,50 @@ npm run build
 npm run start
 ```
 
+## GPU Passthrough
+
+GPU support is allocation plus Proxmox PCI passthrough. The panel prevents two active VMs from selecting the same configured GPU, then writes `hostpci0` to the cloned VM before it starts. The Proxmox host still has to be configured for PCI passthrough first.
+
+For your RTX 3090 shown by `lspci` as:
+
+```text
+61:00.0 VGA compatible controller: NVIDIA Corporation GA102 [GeForce RTX 3090] (rev a1)
+```
+
+set the backend `RESOURCE_GPU_POOL` to:
+
+```env
+RESOURCE_GPU_POOL=[{"id":"RTX3090","pci_id":"61:00.0"}]
+```
+
+If `lspci -nn -s 61:00` also shows an audio function, usually `61:00.1`, and it is in the same IOMMU group, use:
+
+```env
+RESOURCE_GPU_POOL=[{"id":"RTX3090","pci_ids":["61:00.0","61:00.1"],"hostpci_options":"pcie=1,x-vga=1"}]
+```
+
+On the Proxmox host, verify passthrough readiness before testing the panel:
+
+```bash
+lspci -nn -s 61:00
+find /sys/kernel/iommu_groups/ -type l | grep '61:00'
+lsmod | grep vfio
+```
+
+Enable IOMMU in the host boot config, bind the GPU functions to `vfio-pci`, reboot, then confirm the GPU is using `vfio-pci`:
+
+```bash
+lspci -nnk -s 61:00.0
+```
+
+The created VM should show a config line like:
+
+```text
+hostpci0: 0000:61:00,pcie=1,x-vga=1
+```
+
+Use a GPU-capable Linux guest template with NVIDIA drivers installed or install them after first boot, then verify inside the guest with `nvidia-smi`.
+
 ## WireGuard VPN (Optional)
 
 If your VMs don't have public IPs, the panel can provide each user a personal WireGuard config that routes their traffic through a cloud proxy server.

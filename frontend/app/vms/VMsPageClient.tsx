@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import { clientApiFetch } from '@/lib/api'
 import VMCard, { type VM } from '@/components/VMCard'
 import ConfirmDialog from '@/components/ConfirmDialog'
+import RenewModal from '@/components/RenewModal'
+import { type PricingData } from '@/lib/vm'
 import Link from 'next/link'
 import PButton from '@/components/baseui/pbutton'
 import PDiv from '@/components/baseui/pdiv'
@@ -22,6 +24,7 @@ interface BulkGroupProps {
   onStartVm?: (id: string) => void
   onStopVm?: (id: string) => void
   onRestartVm?: (id: string) => void
+  onRenewVm?: (id: string) => void
   loadingAction?: VMAction | 'delete' | null
 }
 
@@ -38,6 +41,10 @@ interface VMsPageState {
   actionError: string | null
   vmActionLoading: { vmId: string; action: VMAction } | null
   bulkActionLoading: { bulkId: string; action: VMAction } | null
+  renewTarget: string | null
+  renewing: boolean
+  pricing: PricingData | null
+  balance: number
   showActive: boolean
   showStopped: boolean
   showPast: boolean
@@ -45,8 +52,14 @@ interface VMsPageState {
 
 type VMsPageAction =
   | { type: 'loadStarted' }
-  | { type: 'loadSucceeded'; vms: VM[] }
+  | { type: 'loadSucceeded'; vms: VM[]; balance?: number }
   | { type: 'loadFailed'; error: string }
+  | { type: 'pricingLoaded'; pricing: PricingData }
+  | { type: 'renewTargetChanged'; value: string | null }
+  | { type: 'renewStarted' }
+  | { type: 'renewSucceeded'; balance: number }
+  | { type: 'renewFailed'; error: string }
+  | { type: 'renewFinished' }
   | { type: 'deleteTargetChanged'; value: string | null }
   | { type: 'deleteStarted' }
   | { type: 'deleteSucceeded'; vmId: string }
@@ -76,6 +89,10 @@ const vmsPageInitialState: VMsPageState = {
   actionError: null,
   vmActionLoading: null,
   bulkActionLoading: null,
+  renewTarget: null,
+  renewing: false,
+  pricing: null,
+  balance: 0,
   showActive: true,
   showStopped: true,
   showPast: false,
@@ -86,9 +103,16 @@ function vmsPageReducer(state: VMsPageState, action: VMsPageAction): VMsPageStat
     case 'loadStarted':
       return { ...state, loading: true, error: null, actionError: null }
     case 'loadSucceeded':
-      return { ...state, loading: false, vms: action.vms }
+      return {
+        ...state,
+        loading: false,
+        vms: action.vms,
+        balance: action.balance ?? state.balance,
+      }
     case 'loadFailed':
       return { ...state, loading: false, error: action.error }
+    case 'pricingLoaded':
+      return { ...state, pricing: action.pricing }
     case 'deleteTargetChanged':
       return { ...state, deleteTarget: action.value }
     case 'deleteStarted':
@@ -136,6 +160,16 @@ function vmsPageReducer(state: VMsPageState, action: VMsPageAction): VMsPageStat
       return { ...state, actionError: action.error }
     case 'bulkActionFinished':
       return { ...state, bulkActionLoading: null }
+    case 'renewTargetChanged':
+      return { ...state, renewTarget: action.value }
+    case 'renewStarted':
+      return { ...state, renewing: true, actionError: null }
+    case 'renewSucceeded':
+      return { ...state, balance: action.balance }
+    case 'renewFailed':
+      return { ...state, actionError: action.error }
+    case 'renewFinished':
+      return { ...state, renewing: false, renewTarget: null }
     case 'toggleFilter':
       return { ...state, [action.name]: !state[action.name] }
   }
@@ -150,6 +184,7 @@ function BulkGroup({
   onStartVm,
   onStopVm,
   onRestartVm,
+  onRenewVm,
   loadingAction = null,
 }: BulkGroupProps) {
   const [expanded, setExpanded] = useState(vms.length <= 6)
@@ -235,6 +270,7 @@ function BulkGroup({
                 onStart={onStartVm}
                 onStop={onStopVm}
                 onRestart={onRestartVm}
+                onRenew={onRenewVm}
                 loadingAction={null}
                 onDelete={
                   onDeleteVm && (vm.status === 'running' || vm.status === 'provisioning' || vm.status === 'stopped')
@@ -273,14 +309,20 @@ interface VMsPageViewProps {
   bulkDeleting: boolean
   vmActionLoading: { vmId: string; action: VMAction } | null
   bulkActionLoading: { bulkId: string; action: VMAction } | null
+  renewTarget: string | null
+  renewing: boolean
+  pricing: PricingData | null
+  balance: number
   showActive: boolean
   showStopped: boolean
   showPast: boolean
   onToggleFilter: (name: 'showActive' | 'showStopped' | 'showPast') => void
   onDeleteTargetChange: (value: string | null) => void
   onBulkDeleteTargetChange: (value: string | null) => void
+  onRenewTargetChange: (value: string | null) => void
   onDeleteConfirm: () => void
   onBulkDeleteConfirm: () => void
+  onRenewConfirm: (durationHours: number) => void
   onVmAction: (vmId: string, action: VMAction) => void
   onBulkAction: (bulkId: string, action: VMAction) => void
 }
@@ -293,14 +335,20 @@ function VMsPageView({
   bulkDeleting,
   vmActionLoading,
   bulkActionLoading,
+  renewTarget,
+  renewing,
+  pricing,
+  balance,
   showActive,
   showStopped,
   showPast,
   onToggleFilter,
   onDeleteTargetChange,
   onBulkDeleteTargetChange,
+  onRenewTargetChange,
   onDeleteConfirm,
   onBulkDeleteConfirm,
+  onRenewConfirm,
   onVmAction,
   onBulkAction,
 }: VMsPageViewProps) {
@@ -348,10 +396,22 @@ function VMsPageView({
           bulkActionLoading={bulkActionLoading}
           onDeleteTargetChange={onDeleteTargetChange}
           onBulkDeleteTargetChange={onBulkDeleteTargetChange}
+          onRenewTargetChange={onRenewTargetChange}
           onVmAction={onVmAction}
           onBulkAction={onBulkAction}
         />
       )}
+
+      <RenewModal
+        key={renewTarget ?? 'closed'}
+        open={!!renewTarget}
+        vm={vms.find((v) => v.id === renewTarget) ?? null}
+        pricing={pricing}
+        balance={balance}
+        loading={renewing}
+        onConfirm={onRenewConfirm}
+        onClose={() => onRenewTargetChange(null)}
+      />
 
       <ConfirmDialog
         open={!!deleteTarget}
@@ -474,6 +534,7 @@ function VMsList({
   bulkActionLoading,
   onDeleteTargetChange,
   onBulkDeleteTargetChange,
+  onRenewTargetChange,
   onVmAction,
   onBulkAction,
 }: {
@@ -493,6 +554,7 @@ function VMsList({
   bulkActionLoading: { bulkId: string; action: VMAction } | null
   onDeleteTargetChange: (value: string | null) => void
   onBulkDeleteTargetChange: (value: string | null) => void
+  onRenewTargetChange: (value: string | null) => void
   onVmAction: (vmId: string, action: VMAction) => void
   onBulkAction: (bulkId: string, action: VMAction) => void
 }) {
@@ -517,6 +579,7 @@ function VMsList({
           onDeleteVm={onDeleteTargetChange}
           onStopVm={(id) => onVmAction(id, 'stop')}
           onRestartVm={(id) => onVmAction(id, 'restart')}
+          onRenewVm={onRenewTargetChange}
         />
       )}
 
@@ -533,6 +596,7 @@ function VMsList({
           onActionGroup={onBulkAction}
           onDeleteVm={onDeleteTargetChange}
           onStartVm={(id) => onVmAction(id, 'start')}
+          onRenewVm={onRenewTargetChange}
         />
       )}
 
@@ -570,6 +634,7 @@ function VMSection({
   onStartVm,
   onStopVm,
   onRestartVm,
+  onRenewVm,
 }: {
   title: string
   staggerClass: string
@@ -584,6 +649,7 @@ function VMSection({
   onStartVm?: (id: string) => void
   onStopVm?: (id: string) => void
   onRestartVm?: (id: string) => void
+  onRenewVm?: (id: string) => void
 }) {
   return (
     <section className={`animate-fade-in ${staggerClass} mb-6 flex flex-col gap-4`}>
@@ -601,6 +667,7 @@ function VMSection({
           onStartVm={onStartVm}
           onStopVm={onStopVm}
           onRestartVm={onRestartVm}
+          onRenewVm={onRenewVm}
           loadingAction={bulkActionLoading?.bulkId === bulkId ? bulkActionLoading.action : null}
         />
       ))}
@@ -613,6 +680,7 @@ function VMSection({
               onStart={onStartVm}
               onStop={onStopVm}
               onRestart={onRestartVm}
+              onRenew={onRenewVm}
               onDelete={onDeleteVm}
               loadingAction={vmActionLoading?.vmId === vm.id ? vmActionLoading.action : null}
             />
@@ -638,6 +706,10 @@ export default function VMsPage() {
     actionError,
     vmActionLoading,
     bulkActionLoading,
+    renewTarget,
+    renewing,
+    pricing,
+    balance,
     showActive,
     showStopped,
     showPast,
@@ -646,8 +718,15 @@ export default function VMsPage() {
   const fetchVMs = useCallback(async () => {
     dispatch({ type: 'loadStarted' })
     try {
-      const data = await clientApiFetch('/vms')
-      dispatch({ type: 'loadSucceeded', vms: data as VM[] })
+      const [vmData, meData] = await Promise.all([
+        clientApiFetch('/vms'),
+        clientApiFetch('/me'),
+      ])
+      dispatch({
+        type: 'loadSucceeded',
+        vms: vmData as VM[],
+        balance: (meData as { points?: number })?.points ?? 0,
+      })
     } catch (err) {
       dispatch({
         type: 'loadFailed',
@@ -657,7 +736,11 @@ export default function VMsPage() {
   }, [])
 
   useEffect(() => {
-    if (status === 'authenticated') fetchVMs()
+    if (status !== 'authenticated') return
+    fetchVMs()
+    clientApiFetch('/pricing')
+      .then((p) => dispatch({ type: 'pricingLoaded', pricing: p as PricingData }))
+      .catch(() => {})
   }, [status, fetchVMs])
 
   useEffect(() => {
@@ -757,6 +840,28 @@ export default function VMsPage() {
     }
   }
 
+  async function handleRenew(durationHours: number) {
+    if (!renewTarget) return
+    const vm = vms.find((v) => v.id === renewTarget)
+    dispatch({ type: 'renewStarted' })
+    try {
+      const res = (await clientApiFetch(`/vms/${renewTarget}/renew`, {
+        method: 'POST',
+        body: JSON.stringify({ duration_hours: durationHours }),
+      })) as { points_balance?: number }
+      dispatch({ type: 'renewSucceeded', balance: res?.points_balance ?? balance })
+      await fetchVMs()
+      toast.success(vm ? `${vm.name} renewed.` : 'VM renewed.')
+    } catch (err) {
+      dispatch({
+        type: 'renewFailed',
+        error: err instanceof Error ? err.message : 'Failed to renew VM',
+      })
+    } finally {
+      dispatch({ type: 'renewFinished' })
+    }
+  }
+
   return (
     <VMsPageView
       vms={vms}
@@ -766,14 +871,20 @@ export default function VMsPage() {
       bulkDeleting={bulkDeleting}
       vmActionLoading={vmActionLoading}
       bulkActionLoading={bulkActionLoading}
+      renewTarget={renewTarget}
+      renewing={renewing}
+      pricing={pricing}
+      balance={balance}
       showActive={showActive}
       showStopped={showStopped}
       showPast={showPast}
       onToggleFilter={(name) => dispatch({ type: 'toggleFilter', name })}
       onDeleteTargetChange={(value) => dispatch({ type: 'deleteTargetChanged', value })}
       onBulkDeleteTargetChange={(value) => dispatch({ type: 'bulkDeleteTargetChanged', value })}
+      onRenewTargetChange={(value) => dispatch({ type: 'renewTargetChanged', value })}
       onDeleteConfirm={handleDelete}
       onBulkDeleteConfirm={handleBulkDelete}
+      onRenewConfirm={handleRenew}
       onVmAction={handleVmAction}
       onBulkAction={handleBulkAction}
     />

@@ -1,13 +1,43 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 from urllib.parse import urlparse
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-DURATION_OPTIONS: list[int] = [1, 2, 4, 8, 12, 24, 36, 48]
+DURATION_OPTIONS: list[int] = [1, 2, 4, 8, 12, 24, 36, 48, 168, 720]  # incl. 7d, 30d
+PCI_ID_RE = re.compile(
+    r"^(?:(?P<domain>[0-9a-fA-F]{4}):)?"
+    r"(?P<bus>[0-9a-fA-F]{2}):"
+    r"(?P<slot>[0-9a-fA-F]{2})"
+    r"(?:\.(?P<function>[0-7]))?$"
+)
+
+
+def normalize_pci_id(value: Any) -> str:
+    if not isinstance(value, str):
+        raise ValueError("PCI ID must be a string")
+
+    pci_id = value.strip()
+    match = PCI_ID_RE.fullmatch(pci_id)
+    if match is None:
+        raise ValueError(
+            f"Invalid PCI ID '{value}'. Expected '61:00.0' or '0000:61:00.0'"
+        )
+
+    domain = match.group("domain") or "0000"
+    bus = match.group("bus")
+    slot = match.group("slot")
+    function = match.group("function")
+    suffix = f".{function}" if function is not None else ""
+    return f"{domain}:{bus}:{slot}{suffix}".lower()
+
+
+def pci_slot_id(pci_id: str) -> str:
+    return pci_id.split(".", 1)[0]
 
 
 class Settings(BaseSettings):
@@ -103,10 +133,68 @@ class Settings(BaseSettings):
                 raise ValueError(f"RESOURCE_GPU_POOL must be valid JSON: {exc}") from exc
             if not isinstance(parsed, list):
                 raise ValueError("RESOURCE_GPU_POOL must be a JSON array")
-            return parsed
+            return cls._normalize_gpu_pool(parsed)
         if isinstance(v, list):
-            return v
+            return cls._normalize_gpu_pool(v)
         raise ValueError("RESOURCE_GPU_POOL must be a JSON array string or list")
+
+    @classmethod
+    def _normalize_gpu_pool(cls, pool: list[Any]) -> list[dict[str, Any]]:
+        normalized: list[dict[str, Any]] = []
+        seen_ids: set[str] = set()
+
+        for index, raw in enumerate(pool):
+            if not isinstance(raw, dict):
+                raise ValueError(f"RESOURCE_GPU_POOL entry {index} must be an object")
+
+            gpu_id = raw.get("id")
+            if not isinstance(gpu_id, str) or not gpu_id.strip():
+                raise ValueError(f"RESOURCE_GPU_POOL entry {index} must include a non-empty id")
+            gpu_id = gpu_id.strip()
+            if gpu_id in seen_ids:
+                raise ValueError(f"Duplicate GPU id '{gpu_id}' in RESOURCE_GPU_POOL")
+            seen_ids.add(gpu_id)
+
+            pci_values = raw.get("pci_ids", raw.get("pci_id"))
+            if pci_values is None:
+                raise ValueError(f"RESOURCE_GPU_POOL entry '{gpu_id}' must include pci_id or pci_ids")
+            if isinstance(pci_values, str):
+                pci_ids = [normalize_pci_id(pci_values)]
+            elif isinstance(pci_values, list) and pci_values:
+                pci_ids = [normalize_pci_id(item) for item in pci_values]
+            else:
+                raise ValueError(f"RESOURCE_GPU_POOL entry '{gpu_id}' has invalid pci_ids")
+
+            hostpci_slots = list(dict.fromkeys(pci_slot_id(pci_id) for pci_id in pci_ids))
+            options = raw.get("hostpci_options")
+            if options is None:
+                hostpci_options: list[str] = ["pcie=1,x-vga=1"] + ["pcie=1"] * (len(hostpci_slots) - 1)
+            elif isinstance(options, str):
+                hostpci_options = [options.strip()] + ["pcie=1"] * (len(hostpci_slots) - 1)
+            elif isinstance(options, list) and len(options) == len(hostpci_slots):
+                hostpci_options = []
+                for option in options:
+                    if not isinstance(option, str):
+                        raise ValueError(
+                            f"RESOURCE_GPU_POOL entry '{gpu_id}' hostpci_options must be strings"
+                        )
+                    hostpci_options.append(option.strip())
+            else:
+                raise ValueError(
+                    f"RESOURCE_GPU_POOL entry '{gpu_id}' hostpci_options must be a string "
+                    "or an array matching pci_ids"
+                )
+
+            normalized.append({
+                **raw,
+                "id": gpu_id,
+                "pci_id": pci_ids[0],
+                "pci_ids": pci_ids,
+                "hostpci_slots": hostpci_slots,
+                "hostpci_options": hostpci_options,
+            })
+
+        return normalized
 
     @field_validator("ADMIN_DISCORD_IDS", mode="before")
     @classmethod

@@ -119,6 +119,18 @@ def _serialize_doc(doc: dict) -> dict:
     return out
 
 
+def _gpu_hostpci_config(gpu_cfg: dict) -> dict[str, str]:
+    hostpci_slots = gpu_cfg.get("hostpci_slots") or [gpu_cfg["pci_id"].split(".", 1)[0]]
+    hostpci_options = gpu_cfg.get("hostpci_options") or []
+    config: dict[str, str] = {}
+
+    for index, pci_slot in enumerate(hostpci_slots):
+        options = hostpci_options[index] if index < len(hostpci_options) else "pcie=1"
+        config[f"hostpci{index}"] = f"{pci_slot},{options}" if options else pci_slot
+
+    return config
+
+
 # ---------------------------------------------------------------------------
 # Resource availability helper
 # ---------------------------------------------------------------------------
@@ -189,14 +201,15 @@ async def create_vm(
     # Pre-flight: GPU validation (no side effects)
     # ------------------------------------------------------------------
     has_gpu = request.gpu_id is not None
-    gpu_pci_id: str | None = None
+    gpu_cfg: dict | None = None
+    gpu_pci_ids: list[str] = []
     if request.gpu_id:
         gpu_cfg = next(
             (g for g in settings.RESOURCE_GPU_POOL if g["id"] == request.gpu_id), None
         )
         if gpu_cfg is None:
             raise ValueError(f"GPU '{request.gpu_id}' not in pool")
-        gpu_pci_id = gpu_cfg["pci_id"]
+        gpu_pci_ids = list(gpu_cfg.get("pci_ids") or [gpu_cfg["pci_id"]])
         gpu_in_use = await db.vms.find_one(
             {"gpu_id": request.gpu_id, "status": {"$in": ["provisioning", "running"]}}
         )
@@ -242,7 +255,8 @@ async def create_vm(
             "ram_gb": request.ram_gb,
             "disk_gb": request.disk_gb,
             "gpu_id": request.gpu_id,
-            "gpu_pci_id": gpu_pci_id,
+            "gpu_pci_id": gpu_pci_ids[0] if gpu_pci_ids else None,
+            "gpu_pci_ids": gpu_pci_ids,
             "ip_address": ip_address,
             "username": username,
             "status": "provisioning",
@@ -351,10 +365,10 @@ async def create_vm(
 
         # Step 6: Attach GPU if requested
         await _emit(progress, "configure", "loading")
-        if gpu_pci_id:
+        if gpu_cfg is not None:
             await pve_client.update_vm_config(
                 vmid,
-                hostpci0=f"{gpu_pci_id},pcie=1,x-vga=1",
+                **_gpu_hostpci_config(gpu_cfg),
             )
 
         # Step 7: Configure cloud-init
@@ -523,6 +537,81 @@ async def delete_vm(vm_doc: dict, db: AsyncIOMotorDatabase) -> None:
         {"_id": vm_object_id},
         {"$set": {"status": "expired", "deleted_at": datetime.now(timezone.utc)}},
     )
+
+
+# ---------------------------------------------------------------------------
+# Renewal flow
+# ---------------------------------------------------------------------------
+
+
+async def renew_vm(
+    vm_doc: dict,
+    duration_hours: int,
+    db: AsyncIOMotorDatabase,
+) -> dict:
+    """Extend a VM's expiry by ``duration_hours``, charging for the added time.
+
+    The new expiry is computed from the later of the current expiry or now, so
+    renewing an already-expiring VM stacks the extension on top of remaining time.
+    Points are deducted and the expiry extended atomically; the VM must still be in
+    a renewable state ('running' or 'stopped') when the transaction commits.
+    """
+    discord_id = vm_doc["user_id"]
+    has_gpu = vm_doc.get("gpu_id") is not None
+    cost = calculate_cost(
+        vm_doc["cpu_cores"], vm_doc["ram_gb"], vm_doc["disk_gb"], has_gpu, duration_hours
+    )
+
+    vm_object_id = (
+        ObjectId(vm_doc["_id"]) if not isinstance(vm_doc["_id"], ObjectId) else vm_doc["_id"]
+    )
+
+    now = datetime.now(timezone.utc)
+    current_expires = vm_doc.get("expires_at")
+    if current_expires is not None and current_expires.tzinfo is None:
+        current_expires = current_expires.replace(tzinfo=timezone.utc)
+    base = current_expires if current_expires and current_expires > now else now
+    new_expires_at = base + timedelta(hours=duration_hours)
+
+    updated_user: dict | None = None
+    async with await db.client.start_session() as session:
+        async with session.start_transaction():
+            updated_user = await db.users.find_one_and_update(
+                {"discord_id": discord_id, "points": {"$gte": cost}},
+                {"$inc": {"points": -cost}},
+                return_document=ReturnDocument.AFTER,
+                session=session,
+            )
+            if updated_user is None:
+                raise ValueError(f"Insufficient points: need {cost}")
+
+            update_result = await db.vms.update_one(
+                {"_id": vm_object_id, "status": {"$in": ["running", "stopped"]}},
+                {
+                    "$set": {"expires_at": new_expires_at},
+                    "$inc": {"points_charged": cost},
+                },
+                session=session,
+            )
+            if update_result.modified_count == 0:
+                raise ValueError("VM cannot be renewed in its current state")
+
+    await db.transactions.insert_one(
+        {
+            "user_id": discord_id,
+            "type": "debit",
+            "amount": cost,
+            "description": f"VM renewed: {vm_doc.get('name') or vm_doc['vmid']} (+{duration_hours}h)",
+            "reference_id": str(vm_object_id),
+            "created_at": now,
+        }
+    )
+
+    return {
+        "expires_at": new_expires_at,
+        "points_charged": cost,
+        "points_balance": updated_user.get("points", 0),
+    }
 
 
 # ---------------------------------------------------------------------------

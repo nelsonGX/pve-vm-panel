@@ -140,6 +140,17 @@ class BulkVMCreateRequest(BaseModel):
         return v
 
 
+class VMRenewRequest(BaseModel):
+    duration_hours: int
+
+    @field_validator("duration_hours")
+    @classmethod
+    def validate_duration(cls, v: int) -> int:
+        if v not in DURATION_OPTIONS:
+            raise ValueError(f"duration_hours must be one of {DURATION_OPTIONS}")
+        return v
+
+
 class VMResponse(BaseModel):
     vm_id: str
     vmid: int

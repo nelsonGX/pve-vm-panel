@@ -28,7 +28,8 @@ interface VMCardProps {
   onStart?: (id: string) => void
   onStop?: (id: string) => void
   onRestart?: (id: string) => void
-  loadingAction?: 'start' | 'stop' | 'restart' | 'delete' | null
+  onRenew?: (id: string) => void
+  loadingAction?: 'start' | 'stop' | 'restart' | 'delete' | 'renew' | null
 }
 
 const OS_ICONS: Record<string, string> = {
@@ -88,7 +89,7 @@ function getOsLabel(os: string): string {
   return os
 }
 
-export default function VMCard({ vm, onDelete, onStart, onStop, onRestart, loadingAction = null }: VMCardProps) {
+export default function VMCard({ vm, onDelete, onStart, onStop, onRestart, onRenew, loadingAction = null }: VMCardProps) {
   const expiresAt = new Date(vm.expires_at).getTime()
   const [remaining, setRemaining] = useState<number>(() => expiresAt - Date.now())
   const [menuOpen, setMenuOpen] = useState(false)
@@ -121,6 +122,7 @@ export default function VMCard({ vm, onDelete, onStart, onStop, onRestart, loadi
     isStopped && onStart ? { key: 'start' as const, label: 'Start VM', onClick: () => onStart(vm.id) } : null,
     vm.status === 'running' && onStop ? { key: 'stop' as const, label: 'Stop VM', onClick: () => onStop(vm.id) } : null,
     vm.status === 'running' && onRestart ? { key: 'restart' as const, label: 'Restart VM', onClick: () => onRestart(vm.id) } : null,
+    (vm.status === 'running' || isStopped) && onRenew ? { key: 'renew' as const, label: 'Renew VM', onClick: () => onRenew(vm.id) } : null,
     onDelete ? { key: 'delete' as const, label: 'Delete VM', onClick: () => onDelete(vm.id), danger: true } : null,
   ].filter(Boolean)
 

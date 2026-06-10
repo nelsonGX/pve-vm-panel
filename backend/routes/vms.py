@@ -11,8 +11,14 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from auth import get_current_user
 from database import get_db
-from models.vm import BulkVMCreateRequest, VMCreateRequest, VMCreateResponse, VMResponse
-from services.vm_lifecycle import bulk_create_vms, create_vm, delete_vm
+from models.vm import (
+    BulkVMCreateRequest,
+    VMCreateRequest,
+    VMCreateResponse,
+    VMRenewRequest,
+    VMResponse,
+)
+from services.vm_lifecycle import bulk_create_vms, create_vm, delete_vm, renew_vm
 from services.pve import PVEError, pve_client
 
 router = APIRouter(tags=["vms"])
@@ -224,6 +230,41 @@ async def remove_vm(
         raise HTTPException(status_code=400, detail="VM cannot be deleted in its current state")
 
     await delete_vm(vm_doc, db)
+
+
+@router.post("/vms/{vm_id}/renew")
+async def renew_vm_endpoint(
+    vm_id: str,
+    body: VMRenewRequest,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    try:
+        oid = ObjectId(vm_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid vm_id")
+
+    vm_doc = await db.vms.find_one({"_id": oid})
+    if vm_doc is None:
+        raise HTTPException(status_code=404, detail="VM not found")
+
+    if vm_doc["user_id"] != current_user["discord_id"]:
+        raise HTTPException(status_code=403, detail="You do not own this VM")
+
+    if vm_doc["status"] not in ("running", "stopped"):
+        raise HTTPException(status_code=400, detail="VM cannot be renewed in its current state")
+
+    try:
+        result = await renew_vm(vm_doc, body.duration_hours, db)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return {
+        "vm_id": vm_id,
+        "expires_at": result["expires_at"].isoformat(),
+        "points_charged": result["points_charged"],
+        "points_balance": result["points_balance"],
+    }
 
 
 @router.post("/vms/{vm_id}/{action}")

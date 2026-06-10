@@ -24,6 +24,7 @@ import PixelSpinner from '@/components/baseui/spinner'
 import { toast } from '@/components/baseui/toast-api'
 import { ChevronsRight, ChevronsLeft } from 'lucide-react'
 import VPNConfigModal from '@/components/VPNConfigModal'
+import { DURATION_OPTIONS, computeCost, durationLabel, type PricingData } from '@/lib/vm'
 
 const NEED_VPN = process.env.NEXT_PUBLIC_NEED_VPN === 'true'
 
@@ -41,13 +42,6 @@ interface GpuOption {
   id: string
   name: string
   available: boolean
-}
-
-interface PricingData {
-  price_cpu: number
-  price_ram: number
-  price_disk: number
-  price_gpu: number
 }
 
 interface MeData {
@@ -69,16 +63,6 @@ const OS_OPTIONS = [
 ]
 
 const RAM_OPTIONS = [1, 2, 4, 8, 16, 32, 48, 64, 96, 128]
-const DURATION_OPTIONS = [
-  { label: '1h', hours: 1 },
-  { label: '2h', hours: 2 },
-  { label: '4h', hours: 4 },
-  { label: '8h', hours: 8 },
-  { label: '12h', hours: 12 },
-  { label: '24h', hours: 24 },
-  { label: '36h', hours: 36 },
-  { label: '48h', hours: 48 },
-]
 
 const PREP_STEP_LABELS: Record<string, string> = {
   stop_source: 'Stopping source VM',
@@ -90,23 +74,6 @@ const PREP_STEP_LABELS: Record<string, string> = {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-function computeCost(
-  cpuCores: number,
-  ramGb: number,
-  diskGb: number,
-  hasGpu: boolean,
-  durationHours: number,
-  pricing: PricingData,
-): number {
-  return Math.ceil(
-    (cpuCores * pricing.price_cpu +
-      ramGb * pricing.price_ram +
-      diskGb * pricing.price_disk +
-      (hasGpu ? pricing.price_gpu : 0)) *
-      durationHours,
-  )
-}
-
 function SelectOptionButton({
   selected,
   disabled,
@@ -1277,7 +1244,7 @@ function useCreatePageContent() {
                         { label: 'GPU', value: hasGpu ? (selectedGpu || '—') : 'None' },
                       ]
                   ),
-                  { label: 'Duration', value: DURATION_OPTIONS.find((d) => d.hours === durationHours)?.label ?? `${durationHours}h` },
+                  { label: 'Duration', value: durationLabel(durationHours) },
                   { label: 'SSH Key', value: sshPublicKey.trim() ? 'Provided' : 'None (password only)' },
                 ].map(({ label, value }) => (
                   <div key={label} className="flex items-center justify-between border-b border-zinc-800 pb-2 last:border-0 last:pb-0">
