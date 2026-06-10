@@ -21,6 +21,15 @@ class Settings(BaseSettings):
 
     INTERNAL_API_SECRET: str
 
+    # Friend Group Auth — credit payments (https://group.nelsongx.com)
+    # Charging is enabled only when both client credentials are present.
+    AUTH_BASE_URL: str = "https://group.nelsongx.com"
+    AUTH_CLIENT_ID: str = ""
+    AUTH_CLIENT_SECRET: str = ""
+    # App-internal points granted per 1 credit (1 credit = 1 TWD on the
+    # platform; this app issues 100 points per TWD).
+    POINTS_PER_CREDIT: int = 100
+
     # MongoDB
     MONGODB_URI: str
 
@@ -130,6 +139,16 @@ class Settings(BaseSettings):
         if not vmid:
             return None
         return vmid
+
+    @property
+    def payments_enabled(self) -> bool:
+        """Credit purchases are available only when FGA client creds are set."""
+        return bool(self.AUTH_CLIENT_ID and self.AUTH_CLIENT_SECRET)
+
+    @property
+    def payment_return_url(self) -> str:
+        """Registered return URL the user lands on after paying."""
+        return f"{self.NEXTAUTH_URL.rstrip('/')}/pay/return"
 
     @property
     def cors_origins(self) -> list[str]:

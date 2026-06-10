@@ -12,6 +12,7 @@ from jobs import setup_scheduler, start_scheduler, stop_scheduler
 from routes.admin import router as admin_router
 from routes.codes import router as codes_router
 from routes.me import router as me_router
+from routes.pay import router as pay_router
 from routes.resources import router as resources_router
 from routes.vms import router as vms_router
 from routes.vpn import router as vpn_router
@@ -61,6 +62,7 @@ app.add_middleware(
 app.include_router(resources_router)
 app.include_router(me_router)
 app.include_router(codes_router)
+app.include_router(pay_router)
 app.include_router(vms_router)
 app.include_router(admin_router)
 app.include_router(vpn_router)

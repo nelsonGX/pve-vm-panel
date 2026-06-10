@@ -96,6 +96,11 @@ async def create_indexes() -> None:
         unique=True,
     )
 
+    # payments — one record per Friend Group Auth payment intent (idempotency
+    # key `ref` is unique so a verify can't double-credit).
+    await _ensure_named_index(db.payments, "ref", "payments_ref_unique", unique=True)
+    await _ensure_named_index(db.payments, "intent_id", "payments_intent_id")
+
     # vpn_configs
     await _ensure_named_index(
         db.vpn_configs, "user_id", "vpn_configs_user_id_unique", unique=True
