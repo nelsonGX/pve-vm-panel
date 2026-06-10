@@ -6,7 +6,7 @@ import PButton from '@/components/baseui/pbutton'
 import PDiv from '@/components/baseui/pdiv'
 import PixelSpinner from '@/components/baseui/spinner'
 import { clientApiFetch } from '@/lib/api'
-import { toast } from '@/components/baseui/toast-manager'
+import { toast } from '@/components/baseui/toast-api'
 
 interface VPNConfig {
   vpn_ip: string
@@ -24,32 +24,43 @@ interface VPNConfigModalProps {
 
 export default function VPNConfigModal({ open, onClose, isFirstTime }: VPNConfigModalProps) {
   const [config, setConfig] = useState<VPNConfig | null>(null)
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const loading = open && !config && !error
 
   useEffect(() => {
     if (!open) return
-    setLoading(true)
-    setError(null)
-    setConfig(null)
+    let cancelled = false
 
     clientApiFetch('/vpn/config')
-      .then(setConfig)
+      .then((data) => {
+        if (cancelled) return
+        setConfig(data)
+        setError(null)
+      })
       .catch(async (err: Error) => {
         // 404 means no config yet — generate one
         if (err.message?.includes('No VPN config found')) {
           try {
             const newCfg = await clientApiFetch('/vpn/config', { method: 'POST' })
+            if (cancelled) return
             setConfig(newCfg)
+            setError(null)
           } catch (e: unknown) {
+            if (cancelled) return
             setError(e instanceof Error ? e.message : 'Failed to generate VPN config')
+            setConfig(null)
           }
         } else {
+          if (cancelled) return
           setError(err.message ?? 'Failed to load VPN config')
+          setConfig(null)
         }
       })
-      .finally(() => setLoading(false))
+
+    return () => {
+      cancelled = true
+    }
   }, [open])
 
   const handleCopy = async () => {
@@ -91,7 +102,7 @@ export default function VPNConfigModal({ open, onClose, isFirstTime }: VPNConfig
                 </p>
               )}
             </div>
-            <button onClick={onClose} className="shrink-0 text-zinc-500 hover:text-zinc-300 transition-colors">
+            <button type="button" onClick={onClose} className="shrink-0 text-zinc-500 hover:text-zinc-300 transition-colors">
               <X className="h-5 w-5" />
             </button>
           </div>

@@ -1,6 +1,8 @@
 import React from 'react';
 
 interface PTextareaProps {
+	id?: string;
+	ariaLabel?: string;
 	value?: string;
 	onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
 	placeholder?: string;
@@ -15,6 +17,8 @@ interface PTextareaProps {
 }
 
 export default function PTextarea({ 
+	id,
+	ariaLabel,
 	value, 
 	onChange, 
 	placeholder, 
@@ -40,6 +44,8 @@ export default function PTextarea({
 				}}
 			>
 				<textarea
+					id={id}
+					aria-label={ariaLabel}
 					value={value}
 					onChange={onChange}
 					placeholder={placeholder}

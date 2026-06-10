@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useEffectEvent } from 'react'
 import PButton from '@/components/baseui/pbutton'
 import PDiv from '@/components/baseui/pdiv'
 
@@ -25,30 +25,28 @@ export default function ConfirmDialog({
   confirmLabel = 'Confirm',
   danger = false,
 }: ConfirmDialogProps) {
-  const cancelRef = useRef<HTMLButtonElement>(null)
-
-  useEffect(() => {
-    if (open) cancelRef.current?.focus()
-  }, [open])
+  const onCancelEvent = useEffectEvent(onCancel)
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && open) onCancel()
+      if (e.key === 'Escape' && open) onCancelEvent()
     }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [open, onCancel])
+  }, [open])
 
   if (!open) return null
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-      onClick={onCancel}
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <button
+        type="button"
+        aria-label="Close dialog"
+        className="absolute inset-0 bg-black/80"
+        onClick={onCancel}
+      />
       <div
-        className="animate-scale-in w-full max-w-md"
-        onClick={(e) => e.stopPropagation()}
+        className="animate-scale-in relative w-full max-w-md"
       >
         <PDiv fullWidth padding="p-6">
           <h2 className="mb-2 text-lg font-semibold text-zinc-100">{title}</h2>

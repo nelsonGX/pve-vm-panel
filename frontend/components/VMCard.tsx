@@ -82,9 +82,9 @@ function formatAgo(ms: number): string {
 
 function getOsLabel(os: string): string {
   const lower = os.toLowerCase()
-  for (const [key, label] of Object.entries(OS_ICONS)) {
-    if (lower.includes(key)) return label
-  }
+  if (lower.includes('ubuntu')) return OS_ICONS.ubuntu
+  if (lower.includes('centos')) return OS_ICONS.centos
+  if (lower.includes('debian')) return OS_ICONS.debian
   return os
 }
 

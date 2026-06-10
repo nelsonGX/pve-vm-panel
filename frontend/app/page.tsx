@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import type { Session } from 'next-auth'
 import { auth } from '@/auth'
 import { apiFetch } from '@/lib/api'
@@ -19,6 +20,11 @@ interface MeData {
 }
 
 type AuthSession = Session | null
+
+export const metadata: Metadata = {
+  title: 'Nelson\'s Free VM',
+  description: 'View cluster resources, account points, and available VM capacity.',
+}
 
 async function getResources(session: AuthSession): Promise<ResourcesData | null> {
   try {

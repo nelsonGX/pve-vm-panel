@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 
 interface PInputProps {
+	id?: string;
+	ariaLabel?: string;
 	value?: string;
 	onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 	type?: 'text' | 'email' | 'password' | 'number' | 'tel' | 'url';
@@ -16,6 +18,8 @@ interface PInputProps {
 }
 
 export default function PInput({ 
+	id,
+	ariaLabel,
 	value, 
 	onChange, 
 	type = 'text', 
@@ -45,6 +49,8 @@ export default function PInput({
 				}}
 			>
 				<input
+					id={id}
+					aria-label={ariaLabel}
 					type={type}
 					value={value}
 					onChange={onChange}

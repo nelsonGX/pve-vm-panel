@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React from 'react';
 
 interface PToggleButtonProps {
 	checked?: boolean;
@@ -23,12 +23,9 @@ export default function PToggleButton({
 	rightLabel = 'ON',
 	className = ''
 }: PToggleButtonProps) {
-	const [isToggled, setIsToggled] = useState(checked);
-
 	const handleClick = () => {
 		if (disabled) return;
-		const newValue = !isToggled;
-		setIsToggled(newValue);
+		const newValue = !checked;
 		if (onChange) {
 			onChange(newValue);
 		}
@@ -77,33 +74,37 @@ export default function PToggleButton({
 		
 		switch (variant) {
 			case 'primary':
-				return `${baseClasses} ${isToggled ? 'border-blue-500 bg-blue-500' : 'border-zinc-500 bg-zinc-500'} ${disabledClasses}`;
+				return `${baseClasses} ${checked ? 'border-blue-500 bg-blue-500' : 'border-zinc-500 bg-zinc-500'} ${disabledClasses}`;
 			case 'secondary':
-				return `${baseClasses} ${isToggled ? 'border-green-500 bg-green-500' : 'border-zinc-500 bg-zinc-500'} ${disabledClasses}`;
+				return `${baseClasses} ${checked ? 'border-green-500 bg-green-500' : 'border-zinc-500 bg-zinc-500'} ${disabledClasses}`;
 			case 'danger':
-				return `${baseClasses} ${isToggled ? 'border-red-500 bg-red-500' : 'border-zinc-500 bg-zinc-500'} ${disabledClasses}`;
+				return `${baseClasses} ${checked ? 'border-red-500 bg-red-500' : 'border-zinc-500 bg-zinc-500'} ${disabledClasses}`;
 			default:
-				return `${baseClasses} ${isToggled ? 'border-blue-500 bg-blue-500' : 'border-zinc-500 bg-zinc-500'} ${disabledClasses}`;
+				return `${baseClasses} ${checked ? 'border-blue-500 bg-blue-500' : 'border-zinc-500 bg-zinc-500'} ${disabledClasses}`;
 		}
 	};
 
 	const getBorderClasses = () => {
 		switch (variant) {
 			case 'primary':
-				return isToggled ? 'border-blue-300' : 'border-zinc-300';
+				return checked ? 'border-blue-300' : 'border-zinc-300';
 			case 'secondary':
-				return isToggled ? 'border-green-300' : 'border-zinc-300';
+				return checked ? 'border-green-300' : 'border-zinc-300';
 			case 'danger':
-				return isToggled ? 'border-red-300' : 'border-zinc-300';
+				return checked ? 'border-red-300' : 'border-zinc-300';
 			default:
-				return isToggled ? 'border-blue-300' : 'border-zinc-300';
+				return checked ? 'border-blue-300' : 'border-zinc-300';
 		}
 	};
 
 	const sizeClasses = getSizeClasses();
 
 	return (
-		<div
+		<button
+			type="button"
+			aria-pressed={checked}
+			aria-label={`${leftLabel} / ${rightLabel}`}
+			disabled={disabled}
 			onClick={handleClick}
 			className={`${getVariantClasses()} ${sizeClasses.toggle} relative ${className}`}
 			style={{
@@ -120,14 +121,14 @@ export default function PToggleButton({
 				<div className="absolute inset-0 flex items-center z-10">
 					<div className="flex-1 flex items-center justify-center px-1">
 						<span className={`${sizeClasses.text} font-medium select-none transition-opacity duration-200 truncate ${
-							!isToggled ? 'text-white opacity-100' : 'text-zinc-400 opacity-50'
+							!checked ? 'text-white opacity-100' : 'text-zinc-400 opacity-50'
 						}`}>
 							{leftLabel}
 						</span>
 					</div>
 					<div className="flex-1 flex items-center justify-center px-1">
 						<span className={`${sizeClasses.text} font-medium select-none transition-opacity duration-200 truncate ${
-							isToggled ? 'text-white opacity-100' : 'text-zinc-400 opacity-50'
+							checked ? 'text-white opacity-100' : 'text-zinc-400 opacity-50'
 						}`}>
 							{rightLabel}
 						</span>
@@ -138,11 +139,11 @@ export default function PToggleButton({
 					style={{
 						left: '4px',
 						width: `${sizeClasses.width / 2 - 8}px`,
-						transform: isToggled ? `translateX(${sizeClasses.width / 2}px)` : 'translateX(0)',
+						transform: checked ? `translateX(${sizeClasses.width / 2}px)` : 'translateX(0)',
 						clipPath: 'polygon(0 2px, 2px 2px, 2px 0, calc(100% - 2px) 0, calc(100% - 2px) 2px, 100% 2px, 100% calc(100% - 2px), calc(100% - 2px) calc(100% - 2px), calc(100% - 2px) 100%, 2px 100%, 2px calc(100% - 2px), 0 calc(100% - 2px))'
 					}}
 				/>
 			</div>
-		</div>
+		</button>
 	);
 }

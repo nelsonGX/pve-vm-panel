@@ -153,9 +153,10 @@ export default function Icon({ name, size = 24, color = 'currentColor', classNam
 	}
 
 	return (
-		<div 
-			className={`inline-block ${className}`}
-			dangerouslySetInnerHTML={{ __html: svgContent }}
+		<span
+			aria-hidden="true"
+			className={`inline-block icon-mask ${className}`}
+			style={{ '--icon-url': `url("data:image/svg+xml;utf8,${encodeURIComponent(svgContent)}")`, '--icon-color': color, '--icon-size': `${size}px` } as React.CSSProperties}
 		/>
 	);
 }

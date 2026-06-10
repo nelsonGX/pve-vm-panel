@@ -69,6 +69,7 @@ export default function Header() {
               <PointsBadge />
               <div className="relative" ref={dropdownRef}>
                 <button
+                  type="button"
                   onClick={() => setDropdownOpen(o => !o)}
                   className="flex items-center gap-2 px-2 py-1 hover:bg-zinc-800 border border-transparent hover:border-zinc-700 transition-colors"
                 >
@@ -97,6 +98,7 @@ export default function Header() {
                 {dropdownOpen && (
                   <div className="absolute right-0 mt-1 w-44 border-2 border-zinc-700 bg-zinc-900 shadow-lg z-30">
                     <button
+                      type="button"
                       onClick={() => {setDropdownOpen(false); router.push('/create')}}
                       className="w-full text-left px-4 py-2 text-blue-300 hover:bg-zinc-800 hover:text-white transition-colors items-center flex gap-2"
                     >
@@ -104,6 +106,7 @@ export default function Header() {
                       Create VM
                     </button>
                     <button
+                      type="button"
                       onClick={() => {setDropdownOpen(false); router.push('/create?bulk')}}
                       className="w-full text-left px-4 py-2 text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors items-center flex gap-2"
                     >
@@ -111,6 +114,7 @@ export default function Header() {
                       Bulk Create VM
                     </button>
                     <button
+                      type="button"
                       onClick={() => {setDropdownOpen(false); router.push('/redeem')}}
                       className="w-full text-left px-4 py-2 text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors items-center flex gap-2"
                     >
@@ -119,6 +123,7 @@ export default function Header() {
                     </button>
                     {NEED_VPN && (
                       <button
+                        type="button"
                         onClick={() => { setDropdownOpen(false); setVpnModalOpen(true) }}
                         className="w-full text-left px-4 py-2 text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors items-center flex gap-2"
                       >
@@ -128,6 +133,7 @@ export default function Header() {
                     )}
                     <div className="border-t border-zinc-700" />
                     <button
+                      type="button"
                       onClick={() => { setDropdownOpen(false); signOut({ callbackUrl: '/' }) }}
                       className="w-full px-4 py-2 text-left text-red-400 hover:bg-zinc-800 hover:text-white transition-colors items-center flex gap-2"
                     >

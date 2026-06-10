@@ -1,11 +1,10 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { Check, Circle, Copy, X } from 'lucide-react'
 import PButton from '@/components/baseui/pbutton'
 import PDiv from '@/components/baseui/pdiv'
 import PixelSpinner from '@/components/baseui/spinner'
-import { toast } from '@/components/baseui/toast-manager'
 
 export type StepStatus = 'pending' | 'loading' | 'done' | 'error'
 
@@ -63,6 +62,7 @@ function CopyButton({ text }: { text: string }) {
   }
   return (
     <button
+      type="button"
       onClick={handleCopy}
       className="ml-2 inline-flex items-center gap-1 border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-xs text-zinc-300 transition-all hover:border-zinc-600 hover:bg-zinc-700"
     >
@@ -79,34 +79,6 @@ export default function ProvisioningModal({
   error,
   onClose,
 }: ProvisioningModalProps) {
-  const shownErrorRef = useRef<string | null>(null)
-  const shownCredentialsRef = useRef<string | null>(null)
-
-  useEffect(() => {
-    if (!open) {
-      shownErrorRef.current = null
-      shownCredentialsRef.current = null
-    }
-  }, [open])
-
-  useEffect(() => {
-    if (!open || !error || shownErrorRef.current === error) return
-    shownErrorRef.current = error
-    toast.error(error, { autoClose: false })
-  }, [open, error])
-
-  useEffect(() => {
-    const credentialKey = credentials
-      ? `${credentials.ip_address}:${credentials.expires_at}`
-      : null
-    if (!open || !credentialKey || shownCredentialsRef.current === credentialKey) return
-    shownCredentialsRef.current = credentialKey
-    toast.warning("You won't be able to see these credentials again. Copy them somewhere safe.", {
-      autoClose: true,
-      autoCloseDelay: 5000,
-    })
-  }, [open, credentials])
-
   if (!open) return null
 
   const hasError = !!error || steps.some((s) => s.status === 'error')
@@ -131,8 +103,8 @@ export default function ProvisioningModal({
           `}</style>
 
           <div className="mb-6 flex flex-col gap-3">
-            {steps.map((step, i) => (
-              <div key={i} className="flex items-center gap-3">
+            {steps.map((step) => (
+              <div key={step.key ?? step.label} className="flex items-center gap-3">
                 {STEP_ICONS[step.status]}
                 <span className={`text-sm ${
                   step.status === 'done' ? 'text-emerald-400'

@@ -145,6 +145,7 @@ export default function PToast({
 							{children}
 						</div>
 						<button
+							type="button"
 							onClick={handleClose}
 							className="text-zinc-400 hover:text-white transition-colors ml-2"
 						>

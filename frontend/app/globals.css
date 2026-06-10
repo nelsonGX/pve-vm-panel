@@ -128,3 +128,15 @@ button {
 .font-unifont {
   font-family: 'unifont', 'Noto Sans TC', monospace;
 }
+
+.icon-mask {
+  width: var(--icon-size);
+  height: var(--icon-size);
+  background-color: var(--icon-color);
+  mask-image: var(--icon-url);
+  mask-repeat: no-repeat;
+  mask-size: contain;
+  -webkit-mask-image: var(--icon-url);
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+}

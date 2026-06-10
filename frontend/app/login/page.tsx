@@ -1,22 +1,11 @@
-'use client'
+import type { Metadata } from 'next'
+import LoginPageClient from './LoginPageClient'
 
-import { signIn } from 'next-auth/react'
-import { useEffect } from 'react'
-import PixelSpinner from '@/components/baseui/spinner'
+export const metadata: Metadata = {
+  title: 'Login | Nelson\'s Free VM',
+  description: 'Sign in with Discord to access your VM dashboard.',
+}
 
-export default function Login() {
-  useEffect(() => {
-    signIn('discord', { callbackUrl: '/' })
-  }, [])
-
-  return (
-    <div className="flex flex-1 items-center justify-center">
-      <div className="text-center">
-        <div className="mb-3 flex justify-center">
-          <PixelSpinner color="bg-blue-400" size={10} />
-        </div>
-        <p className="text-zinc-400">Redirecting to Discord...</p>
-      </div>
-    </div>
-  )
+export default function LoginPage() {
+  return <LoginPageClient />
 }

@@ -1,12 +1,11 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { Check, Circle, Copy, Download, X } from 'lucide-react'
 import type { StepStatus } from './ProvisioningModal'
 import PButton from '@/components/baseui/pbutton'
 import PDiv from '@/components/baseui/pdiv'
 import PixelSpinner from '@/components/baseui/spinner'
-import { toast } from '@/components/baseui/toast-manager'
 
 export interface PrepStep {
   key: string
@@ -107,6 +106,7 @@ function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false)
   return (
     <button
+      type="button"
       onClick={async () => {
         await navigator.clipboard.writeText(text)
         setCopied(true)
@@ -121,7 +121,7 @@ function CopyButton({ text }: { text: string }) {
 }
 
 function downloadCSV(credentials: BulkCredential[]) {
-  const sorted = [...credentials].sort((a, b) => a.vm_index - b.vm_index)
+  const sorted = credentials.toSorted((a, b) => a.vm_index - b.vm_index)
   const header = 'VM#,IP Address,Username,Password,Expires At'
   const rows = sorted.map(
     (c) => `${c.vm_index + 1},${c.ip_address},${c.username},${c.password},${new Date(c.expires_at).toLocaleString()}`,
@@ -146,31 +146,6 @@ export default function BulkProvisioningModal({
   fatalError,
   onClose,
 }: BulkProvisioningModalProps) {
-  const shownFatalErrorRef = useRef<string | null>(null)
-  const shownCredentialsToastRef = useRef(false)
-
-  useEffect(() => {
-    if (!open) {
-      shownFatalErrorRef.current = null
-      shownCredentialsToastRef.current = false
-    }
-  }, [open])
-
-  useEffect(() => {
-    if (!open || !fatalError || shownFatalErrorRef.current === fatalError) return
-    shownFatalErrorRef.current = fatalError
-    toast.error(fatalError, { autoClose: false })
-  }, [open, fatalError])
-
-  useEffect(() => {
-    if (!open || credentials.length === 0 || shownCredentialsToastRef.current) return
-    shownCredentialsToastRef.current = true
-    toast.warning("Save these credentials now. You won't be able to see them again.", {
-      autoClose: true,
-      autoCloseDelay: 7000,
-    })
-  }, [open, credentials.length])
-
   if (!open) return null
 
   const doneCount = credentials.length
@@ -179,7 +154,7 @@ export default function BulkProvisioningModal({
   const finished = doneCount + errorCount
   const isDone = finished === total && total > 0
   const hasFatal = !!fatalError
-  const sortedCredentials = [...credentials].sort((a, b) => a.vm_index - b.vm_index)
+  const sortedCredentials = credentials.toSorted((a, b) => a.vm_index - b.vm_index)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
@@ -250,7 +225,7 @@ export default function BulkProvisioningModal({
                 <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
                   {vmStatuses.map((vm, index) => (
                     <div
-                      key={index}
+                      key={`${index + 1}-${vm.currentStep}`}
                       className={`flex items-center gap-2 border px-3 py-2 text-sm ${
                         vm.status === 'done'
                           ? 'border-emerald-800 bg-emerald-950/30'
@@ -271,7 +246,7 @@ export default function BulkProvisioningModal({
                               <span
                                 key={Math.floor(vm.cloneProgress)}
                                 style={{
-                                  fontSize: '0.7rem',
+                                  fontSize: '0.75rem',
                                   color: '#956afa',
                                   animation: 'vm_step_slide_in 0.25s ease forwards',
                                   display: 'inline-block',

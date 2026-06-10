@@ -1,7 +1,7 @@
 import { auth } from '@/auth'
 import { NextRequest, NextResponse } from 'next/server'
 
-const FASTAPI_BASE = 'http://localhost:8124/api/v1'
+const FASTAPI_BASE = process.env.INTERNAL_API_BASE ?? 'http://localhost:8124/api/v1'
 const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET ?? ''
 
 async function proxy(req: NextRequest): Promise<NextResponse> {
@@ -33,11 +33,19 @@ async function proxy(req: NextRequest): Promise<NextResponse> {
       ? await req.text()
       : undefined
 
-  const upstream = await fetch(targetUrl, {
-    method: req.method,
-    headers,
-    body,
-  })
+  let upstream: Response
+  try {
+    upstream = await fetch(targetUrl, {
+      method: req.method,
+      headers,
+      body,
+    })
+  } catch {
+    return NextResponse.json(
+      { detail: `Backend API is unreachable at ${FASTAPI_BASE}` },
+      { status: 502 },
+    )
+  }
 
   // Pass SSE streams through without buffering
   if (upstream.headers.get('Content-Type')?.includes('text/event-stream')) {

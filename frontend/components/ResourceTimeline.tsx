@@ -143,12 +143,12 @@ export default function ResourceTimeline() {
       <PDiv fullWidth padding="p-4">
         {/* Time axis */}
         <div className="relative mb-2 ml-48 h-5">
-          {ticks.map((tick, i) => {
+          {ticks.map((tick) => {
             const x = pct(tick.getTime())
             if (x < 0 || x > 100) return null
             return (
               <span
-                key={i}
+                key={tick.toISOString()}
                 className="absolute -translate-x-1/2 text-[10px] text-zinc-600"
                 style={{ left: `${x}%` }}
               >
@@ -168,8 +168,6 @@ export default function ResourceTimeline() {
             const barWidth = barRight - barLeft
             const color    = STATUS_COLOR[vm.status] ?? 'bg-zinc-500'
             const url      = vm.user.avatar_url
-            const expires  = new Date(vm.expires_at)
-
             const isHovered = tooltip?.vm.id === vm.id
 
             return (
@@ -211,12 +209,12 @@ export default function ResourceTimeline() {
                 {/* Right: timeline bar */}
                 <div className="relative h-8 flex-1 overflow-hidden">
                   {/* Tick grid lines */}
-                  {ticks.map((tick, i) => {
+                  {ticks.map((tick) => {
                     const x = pct(tick.getTime())
                     if (x < 0 || x > 100) return null
                     return (
                       <div
-                        key={i}
+                        key={tick.toISOString()}
                         className="absolute inset-y-0 w-px bg-zinc-800/70"
                         style={{ left: `${x}%` }}
                       />

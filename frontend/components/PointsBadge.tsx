@@ -1,25 +1,34 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useReducer } from 'react'
 import { useSession } from 'next-auth/react'
 import { clientApiFetch } from '@/lib/api'
 
 export default function PointsBadge() {
   const { data: session, status } = useSession()
-  const [points, setPoints] = useState<number | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [state, dispatch] = useReducer(
+    (
+      current: { points: number | null; loading: boolean },
+      action: { type: 'loaded'; points: number | null },
+    ) => {
+      switch (action.type) {
+        case 'loaded':
+          return { points: action.points, loading: false }
+      }
+    },
+    { points: null, loading: true },
+  )
+  const { points, loading } = state
 
   useEffect(() => {
     if (status !== 'authenticated') return
 
     clientApiFetch('/me')
       .then((data: { points: number }) => {
-        setPoints(data.points)
-        setLoading(false)
+        dispatch({ type: 'loaded', points: data.points })
       })
       .catch(() => {
-        setPoints(null)
-        setLoading(false)
+        dispatch({ type: 'loaded', points: null })
       })
   }, [status, session])
 
