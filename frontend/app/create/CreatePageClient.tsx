@@ -74,6 +74,11 @@ const PREP_STEP_LABELS: Record<string, string> = {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+// Format a points value: strip floating-point noise, then localize.
+function fmtPts(value: number): string {
+  return `${(Math.round(value * 100) / 100).toLocaleString()} pts`
+}
+
 function SelectOptionButton({
   selected,
   disabled,
@@ -542,6 +547,14 @@ function useCreatePageContent() {
     ? computeCost(cpuCores, ramGb, diskGb, isBulk ? false : hasGpu, durationHours, pricing)
     : null
   const cost = isBulk && singleCost !== null ? singleCost * vmCount : singleCost
+
+  // Per-component cost breakdown (single VM, over the chosen duration).
+  const costBreakdown = {
+    cpu:  cpuCores * (pricing?.price_cpu  ?? 0) * durationHours,
+    ram:  ramGb    * (pricing?.price_ram  ?? 0) * durationHours,
+    disk: diskGb   * (pricing?.price_disk ?? 0) * durationHours,
+    gpu:  (hasGpu ? (pricing?.price_gpu ?? 0) : 0) * durationHours,
+  }
 
   const balance = me?.points ?? 0
   const remaining = cost !== null ? balance - cost : null
@@ -1038,36 +1051,51 @@ function useCreatePageContent() {
           </div>
         )
 
-      case 'gpu':
+      case 'gpu': {
+        const gpuPricePerHour = pricing?.price_gpu ?? 0
         return (
           <div>
             <h2 className="mb-4 text-lg font-semibold text-zinc-100">Add a GPU?</h2>
-            <div className="mb-4 flex items-center gap-3">
+            <div className="mb-5 flex items-center gap-3">
               <PToggleButton
                 checked={hasGpu}
                 onChange={(v) => dispatchForm({ type: 'gpuEnabledChanged', value: v })}
                 leftLabel="No GPU"
                 rightLabel="Add GPU"
               />
+              {gpuPricePerHour > 0 && (
+                <span className="text-sm text-zinc-500">
+                  {gpuPricePerHour.toLocaleString()} pts/hr
+                </span>
+              )}
             </div>
             {hasGpu && (
-              <PDiv fullWidth padding="p-0">
-                <select
-                  value={selectedGpu}
-                  onChange={(e) => dispatchForm({ type: 'fieldChanged', name: 'selectedGpu', value: e.target.value })}
-                  className="w-full bg-transparent px-3 py-2 text-sm text-zinc-100 outline-none"
-                >
-                  <option value="">Select GPU...</option>
+              <>
+                <div className="mb-2 flex items-center gap-2">
+                  <span className="text-xs text-zinc-600">Select a GPU</span>
+                  <div className="h-px flex-1 bg-zinc-800" />
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                   {availableGpus.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.name}
-                    </option>
+                    <SelectOptionButton
+                      key={g.id}
+                      selected={selectedGpu === g.id}
+                      onClick={() => dispatchForm({ type: 'fieldChanged', name: 'selectedGpu', value: g.id })}
+                    >
+                      <span className="flex flex-col items-start gap-0.5">
+                        <span className="font-medium">{g.name}</span>
+                        {gpuPricePerHour > 0 && (
+                          <span className="text-xs opacity-70">{gpuPricePerHour.toLocaleString()} pts/hr</span>
+                        )}
+                      </span>
+                    </SelectOptionButton>
                   ))}
-                </select>
-              </PDiv>
+                </div>
+              </>
             )}
           </div>
         )
+      }
 
       case 'duration':
         return (
@@ -1400,22 +1428,22 @@ function useCreatePageContent() {
                       </div>
                       <div className="flex justify-between">
                         <dt className="text-zinc-500">CPU</dt>
-                        <dd className="font-semibold text-zinc-400">
-                          {`${cpuCores * (pricing?.price_cpu || 0) * durationHours} pts`}
-                        </dd>
+                        <dd className="font-semibold text-zinc-400">{fmtPts(costBreakdown.cpu)}</dd>
                       </div>
                       <div className="flex justify-between">
                         <dt className="text-zinc-500">RAM</dt>
-                        <dd className="font-semibold text-zinc-400">
-                          {`${ramGb * (pricing?.price_ram || 0) * durationHours} pts`}
-                        </dd>
+                        <dd className="font-semibold text-zinc-400">{fmtPts(costBreakdown.ram)}</dd>
                       </div>
                       <div className="flex justify-between">
                         <dt className="text-zinc-500">Disk</dt>
-                        <dd className="font-semibold text-zinc-400">
-                          {`${diskGb * (pricing?.price_disk || 0) * durationHours} pts`}
-                        </dd>
+                        <dd className="font-semibold text-zinc-400">{fmtPts(costBreakdown.disk)}</dd>
                       </div>
+                      {hasGpu && (
+                        <div className="flex justify-between">
+                          <dt className="text-zinc-500">GPU</dt>
+                          <dd className="font-semibold text-zinc-400">{fmtPts(costBreakdown.gpu)}</dd>
+                        </div>
+                      )}
                     </>
                   )}
                   <div className="flex justify-between">
