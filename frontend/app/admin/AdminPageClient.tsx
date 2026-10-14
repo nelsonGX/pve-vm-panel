@@ -324,22 +324,51 @@ function CodesTab() {
   )
 }
 
+interface VMsState {
+  vms: AdminVM[]
+  loading: boolean
+  error: string | null
+}
+
+type VMsAction =
+  | { type: 'loadStarted' }
+  | { type: 'loadSucceeded'; vms: AdminVM[] }
+  | { type: 'loadFailed'; error: string }
+  | { type: 'vmRemoved'; vmId: string }
+
+const vmsInitialState: VMsState = {
+  vms: [],
+  loading: true,
+  error: null,
+}
+
+function vmsReducer(state: VMsState, action: VMsAction): VMsState {
+  switch (action.type) {
+    case 'loadStarted':
+      return { ...state, loading: true, error: null }
+    case 'loadSucceeded':
+      return { ...state, loading: false, vms: action.vms }
+    case 'loadFailed':
+      return { ...state, loading: false, error: action.error }
+    case 'vmRemoved':
+      return { ...state, vms: state.vms.filter((v) => v.vm_id !== action.vmId) }
+  }
+}
+
 function VMsTab() {
-  const [vms, setVMs] = useState<AdminVM[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [{ vms, loading, error }, dispatch] = useReducer(vmsReducer, vmsInitialState)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
   const loadVMs = useCallback(async () => {
-    setLoading(true)
-    setError(null)
+    dispatch({ type: 'loadStarted' })
     try {
       const data = await clientApiFetch('/admin/vms')
-      setVMs((data as { items: AdminVM[] }).items)
+      dispatch({ type: 'loadSucceeded', vms: (data as { items: AdminVM[] }).items })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load VMs')
-    } finally {
-      setLoading(false)
+      dispatch({
+        type: 'loadFailed',
+        error: err instanceof Error ? err.message : 'Failed to load VMs',
+      })
     }
   }, [])
 
@@ -349,7 +378,7 @@ function VMsTab() {
     if (!deleteTarget) return
     try {
       await clientApiFetch(`/admin/vms/${deleteTarget}`, { method: 'DELETE' })
-      setVMs((prev) => prev.filter((v) => v.vm_id !== deleteTarget))
+      dispatch({ type: 'vmRemoved', vmId: deleteTarget })
     } catch {
       await loadVMs()
     } finally {

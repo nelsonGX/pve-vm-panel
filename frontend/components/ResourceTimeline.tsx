@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useReducer, useState } from 'react'
 import Image from 'next/image'
 import PButton from '@/components/baseui/pbutton'
 import PDiv from '@/components/baseui/pdiv'
@@ -58,31 +58,57 @@ interface TooltipState {
   anchorY: number
 }
 
+interface TimelineState {
+  data: TimelineData | null
+  loading: boolean
+  now: Date
+}
+
+type TimelineAction =
+  | { type: 'loadStarted' }
+  | { type: 'loadSucceeded'; data: TimelineData }
+  | { type: 'loadFinished' }
+  | { type: 'ticked' }
+
+function timelineReducer(state: TimelineState, action: TimelineAction): TimelineState {
+  switch (action.type) {
+    case 'loadStarted':
+      return { ...state, loading: true }
+    case 'loadSucceeded':
+      return { data: action.data, loading: false, now: new Date(action.data.now) }
+    case 'loadFinished':
+      return { ...state, loading: false }
+    case 'ticked':
+      return { ...state, now: new Date() }
+  }
+}
+
 export default function ResourceTimeline() {
-  const [data, setData] = useState<TimelineData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [now, setNow] = useState(() => new Date())
+  const [{ data, loading, now }, dispatch] = useReducer(
+    timelineReducer,
+    null,
+    (): TimelineState => ({ data: null, loading: true, now: new Date() }),
+  )
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
 
   async function fetchData() {
-    setLoading(true)
+    dispatch({ type: 'loadStarted' })
     try {
       const res = await fetch('/api/v1/resources/timeline')
       if (res.ok) {
         const json: TimelineData = await res.json()
-        setData(json)
-        setNow(new Date(json.now))
+        dispatch({ type: 'loadSucceeded', data: json })
+        return
       }
     } catch {
       // silently ignore — non-critical widget
-    } finally {
-      setLoading(false)
     }
+    dispatch({ type: 'loadFinished' })
   }
 
   useEffect(() => {
     fetchData()
-    const tick = setInterval(() => setNow(new Date()), 60_000)
+    const tick = setInterval(() => dispatch({ type: 'ticked' }), 60_000)
     return () => clearInterval(tick)
   }, [])
 
