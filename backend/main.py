@@ -9,6 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from config import settings
 from database import close_client, create_indexes
 from jobs import setup_scheduler, start_scheduler, stop_scheduler
+from mcp_server import build_mcp_app, mcp
+from routes.api_tokens import router as api_tokens_router
 from routes.admin import router as admin_router
 from routes.codes import router as codes_router
 from routes.me import router as me_router
@@ -33,7 +35,8 @@ async def lifespan(app: FastAPI):
     logger.info("MongoDB indexes ensured")
     setup_scheduler(app)
     start_scheduler()
-    yield
+    async with mcp.session_manager.run():
+        yield
     # ---- shutdown ----
     logger.info("Shutting down…")
     stop_scheduler()
@@ -66,6 +69,10 @@ app.include_router(pay_router)
 app.include_router(vms_router)
 app.include_router(admin_router)
 app.include_router(vpn_router)
+app.include_router(api_tokens_router)
+
+# MCP server for AI agents (Streamable HTTP, personal API token auth)
+app.mount("/mcp", build_mcp_app())
 
 
 # -------------------------------------------------------------------------

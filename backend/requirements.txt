@@ -6,3 +6,4 @@ httpx
 apscheduler
 bcrypt
 python-multipart
+mcp

@@ -32,6 +32,7 @@ VM Created
   - creating redemption codes
   - force deleting VMs
 - Optional WireGuard VPN proxy so users can reach VMs that have no public IP
+- MCP server so AI agents (Claude, Cursor, etc.) can manage a user's VMs
 
 ## Stack
 
@@ -238,3 +239,18 @@ The proxy server needs a route to your VM private network (e.g. `10.86.0.0/16`).
 #### User flow
 
 When a user creates their first VM (and VPN is enabled), the panel automatically generates a WireGuard config for them and shows a prompt to download it. They can also retrieve it anytime from **Header → VPN Config**.
+
+## AI Agents (MCP)
+
+The panel exposes a [Model Context Protocol](https://modelcontextprotocol.io) server so AI agents can manage VMs on a user's behalf.
+
+1. Sign in, open **Header → AI Agents (MCP)** (`/mcp`) and create an API token. It is shown once.
+2. Point your MCP client at `https://your-domain.com/api/mcp` (Streamable HTTP) with header `Authorization: Bearer <token>`. For Claude Code:
+
+```bash
+claude mcp add --transport http pve-vm-panel https://your-domain.com/api/mcp   --header "Authorization: Bearer pvp_..."
+```
+
+Tools: `get_account`, `get_resources`, `estimate_cost`, `list_vms`, `create_vm`, `vm_power`, `renew_vm`, `delete_vm`, `list_transactions`, `redeem_code`. Agents act as the token owner and spend their points; every action goes through the same checks as the web UI. Tokens are stored hashed and can be revoked from the same page.
+
+Next.js forwards `/api/mcp` to the backend's `/api/v1/mcp/` without buffering. If you put Nginx in front, disable buffering for that path (`proxy_buffering off;`) and raise `proxy_read_timeout`, since `create_vm` can take a few minutes.

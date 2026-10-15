@@ -109,6 +109,12 @@ async def create_indexes() -> None:
         db.vpn_configs, "vpn_ip", "vpn_configs_vpn_ip_unique", unique=True
     )
 
+    # api_tokens — looked up by hash on every MCP request
+    await _ensure_named_index(
+        db.api_tokens, "token_hash", "api_tokens_token_hash_unique", unique=True
+    )
+    await _ensure_named_index(db.api_tokens, "user_id", "api_tokens_user_id")
+
 
 async def close_client() -> None:
     global _client
